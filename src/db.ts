@@ -98,6 +98,15 @@ export async function updateRecord(record: HomeworkRecord): Promise<void> {
   await db.put(STORE_NAME, record)
 }
 
+export async function importRecords(records: HomeworkRecord[]): Promise<void> {
+  const db = await getDb()
+  const tx = db.transaction(STORE_NAME, 'readwrite')
+  for (const r of records) {
+    await tx.store.put(r)
+  }
+  await tx.done
+}
+
 export async function getDateGroups(): Promise<string[]> {
   const db = await getDb()
   const dates = new Set<string>()

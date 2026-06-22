@@ -1,15 +1,54 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
+import * as db from '../db'
 import { SUBJECTS, Subject, HomeworkRecord } from '../types'
 
 const PAGE_SIZE = 20
 
 export function RecordsView() {
-  const { records, loading, deleteRecord, updateRecord, filterBySubject, subjectFilter } = useRecords()
+  const { records, loading, deleteRecord, updateRecord, filterBySubject, subjectFilter, refresh } = useRecords()
   const [page, setPage] = useState(0)
   const [editingRecord, setEditingRecord] = useState<HomeworkRecord | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [importMsg, setImportMsg] = useState<string | null>(null)
+
+  const handleExport = async () => {
+    try {
+      const all = await db.getAllRecords()
+      const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `homework-records-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error('导出失败', e)
+    }
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportMsg(null)
+    try {
+      const text = await file.text()
+      const data = JSON.parse(text)
+      if (!Array.isArray(data)) throw new Error('格式错误')
+      await db.importRecords(data)
+      await refresh()
+      setImportMsg(`成功导入 ${data.length} 条记录`)
+    } catch (e) {
+      setImportMsg('导入失败：文件格式不正确')
+      console.error('导入失败', e)
+    }
+    // Reset so the same file can be re-selected
+    e.target.value = ''
+  }
 
   if (loading) {
     return <div className="page"><p className="loading-text">加载中...</p></div>
@@ -91,6 +130,19 @@ export function RecordsView() {
           onCancel={() => setEditingRecord(null)}
         />
       )}
+
+      <div className="data-io">
+        <button className="btn btn--text" onClick={handleExport}>导出数据</button>
+        <button className="btn btn--text" onClick={() => fileInputRef.current?.click()}>导入数据</button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleImport}
+        />
+        {importMsg && <p className="data-io__msg">{importMsg}</p>}
+      </div>
     </div>
   )
 }
