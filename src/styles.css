@@ -433,6 +433,22 @@ body {
   color: var(--color-danger);
 }
 
+.record-item__edit {
+  border: none;
+  background: none;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 8px;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.record-item__edit:hover {
+  opacity: 1;
+  color: var(--color-primary);
+}
+
 /* Filter Bar */
 .filter-bar {
   display: flex;
