@@ -21,7 +21,11 @@ export function RecordsView() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `homework-records-${new Date().toISOString().slice(0, 10)}.json`
+      const localDate = new Date()
+      const y = localDate.getFullYear()
+      const m = String(localDate.getMonth() + 1).padStart(2, '0')
+      const d = String(localDate.getDate()).padStart(2, '0')
+      a.download = `homework-records-${y}-${m}-${d}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)

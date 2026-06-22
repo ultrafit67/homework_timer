@@ -53,6 +53,9 @@ export function useTimer(): UseTimerReturn {
       if (prev.status === 'idle') {
         return { ...prev, status: 'subjectSelected', selectedSubject: subject }
       }
+      if (prev.status === 'subjectSelected') {
+        return { ...prev, selectedSubject: subject }
+      }
       return prev
     })
   }, [])
