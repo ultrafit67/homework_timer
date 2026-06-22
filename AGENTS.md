@@ -58,6 +58,19 @@ src/
 | `/stats` | StatsView | 统计 |
 | `/records` | RecordsView | 记录 |
 
+## Deployment
+
+- **Surge.sh** (当前使用): `npm run build && npx surge dist/ --domain <name>.surge.sh`
+  - 需代理访问。当前环境使用 SOCKS5 代理 `socks5://192.168.31.1:7890`
+  - Node.js 不原生支持 SOCKS5，部署时需通过 `proxy-bootstrap.mjs` 注入 `SocksProxyAgent`:
+    ```bash
+    NODE_OPTIONS="--import proxy-bootstrap.mjs" node /path/to/surge/bin/surge dist/ --domain <name>.surge.sh
+    ```
+  - 首次部署会提示输入邮箱和密码注册账号。已注册账号和密码存储在 `~/.surge/` 中。
+  - 当前部署地址: `https://ultrafit67-homework.surge.sh`
+- **Vercel**: `npx vercel deploy dist/ --prod` — 当前环境无直连 HTTPS 能力，需通过 SOCKS5 代理（方法同上）。
+- **手机访问**: 开发模式 `npm run dev` 直接局域网访问 `http://<电脑IP>:5173` 即可。
+
 ## Known constraints
 
 - No tests exist. No testing framework installed (Playwright in devDeps but not configured).
