@@ -34,12 +34,13 @@ export function StatsView() {
             {weeklyTotals.map((item, i) => {
               const h = Math.floor(item.totalSeconds / 3600)
               const m = Math.floor((item.totalSeconds % 3600) / 60)
+              const s = item.totalSeconds % 60
               return (
                 <div key={item.weekId} className="weekly-item">
                   <div className="weekly-item__rank">#{i + 1}</div>
                   <div className="weekly-item__week">第{item.weekId.split('-W')[1]}周</div>
                   <div className="weekly-item__time">
-                    {h > 0 ? `${h}时${m}分` : `${m}分`}
+                    {h > 0 ? `${h}时${m}分${s}秒` : m > 0 ? `${m}分${s}秒` : `${s}秒`}
                   </div>
                 </div>
               )

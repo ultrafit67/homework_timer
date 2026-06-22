@@ -6,7 +6,8 @@ interface TotalTimeCardProps {
 export function TotalTimeCard({ label, totalSeconds }: TotalTimeCardProps) {
   const h = Math.floor(totalSeconds / 3600)
   const m = Math.floor((totalSeconds % 3600) / 60)
-  const display = h > 0 ? `${h}时${m}分` : `${m}分`
+  const s = totalSeconds % 60
+  const display = h > 0 ? `${h}时${m}分${s}秒` : m > 0 ? `${m}分${s}秒` : `${s}秒`
 
   return (
     <div className="total-card">

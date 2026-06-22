@@ -20,7 +20,8 @@ const SUBJECT_COLORS: Record<Subject, string> = {
 export function RankingItem({ subject, totalSeconds, count, rank }: RankingItemProps) {
   const h = Math.floor(totalSeconds / 3600)
   const m = Math.floor((totalSeconds % 3600) / 60)
-  const display = h > 0 ? `${h}小时${m}分钟` : `${m}分钟`
+  const s = totalSeconds % 60
+  const display = h > 0 ? `${h}小时${m}分${s}秒` : m > 0 ? `${m}分${s}秒` : `${s}秒`
   const barPercent = Math.min(100, (totalSeconds / 7200) * 100) // max 2 hours = 100%
 
   return (

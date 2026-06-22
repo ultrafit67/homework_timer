@@ -28,7 +28,7 @@ export function formatDuration(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600)
   const m = Math.floor((totalSeconds % 3600) / 60)
   const s = totalSeconds % 60
-  if (h > 0) return `${h}时${m}分`
+  if (h > 0) return `${h}时${m}分${s}秒`
   if (m > 0) return `${m}分${s}秒`
   return `${s}秒`
 }
