@@ -56,12 +56,6 @@ export function StatsView() {
       <h2 className="page__title">统计</h2>
 
       <div className="user-tabs">
-        <button
-          className={`user-tabs__tab ${userFilter === null ? 'user-tabs__tab--active' : ''}`}
-          onClick={() => filterByUser(null)}
-        >
-          全部
-        </button>
         {USERS.map(u => (
           <button
             key={u}
