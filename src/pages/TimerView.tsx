@@ -103,6 +103,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
 
   return (
     <div className="page timer-page">
+      <h2 className="page__title">每日作业计时器</h2>
       {!showManual ? (
         <>
           <div className="timer-panels">
