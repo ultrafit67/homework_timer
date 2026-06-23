@@ -122,46 +122,72 @@ body {
 }
 
 .timer-panel {
-  padding: 16px 0;
+  padding: 8px 0;
 }
 
 .timer-panel:first-child {
   padding-top: 0;
 }
 
-.timer-panel__header {
-  font-size: 18px;
+/* Compact header row: user name + timer side by side */
+.timer-panel__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.timer-panel__name {
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-primary);
-  margin-bottom: 12px;
-  text-align: center;
+  white-space: nowrap;
+}
+
+.timer-panel__header-row .timer-display {
+  padding: 0;
+  margin: 0;
+}
+
+.timer-panel__header-row .timer-display__time {
+  font-size: 32px;
+  letter-spacing: 1px;
 }
 
 .timer-panel__error {
   background: #FEF2F2;
   color: var(--color-danger);
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-/* Override timer-panel inner spacing */
-.timer-panel .subject-grid {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
   margin-bottom: 8px;
 }
 
-.timer-panel .timer-display {
-  padding: 12px 0;
-  margin-bottom: 12px;
+/* Compact subject grid inside timer panels */
+.timer-panel .subject-grid {
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
-.timer-panel .timer-display__time {
-  font-size: 40px;
+.timer-panel .subject-btn {
+  height: 44px;
+  width: auto;
+  aspect-ratio: auto;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  border-width: 1.5px;
 }
 
+/* Compact action buttons inside timer panels */
 .timer-panel .action-buttons {
   padding: 0;
+}
+
+.timer-panel .btn--large {
+  padding: 10px 24px;
+  font-size: 15px;
+  border-radius: 10px;
 }
 
 /* Record Item User Badge */

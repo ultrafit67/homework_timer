@@ -52,7 +52,10 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
 
   return (
     <div className="timer-panel">
-      <div className="timer-panel__header">{userName}</div>
+      <div className="timer-panel__header-row">
+        <span className="timer-panel__name">{userName}</span>
+        <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
+      </div>
 
       {error && <div className="timer-panel__error">{error}</div>}
 
