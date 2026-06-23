@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react'
-import { Subject, USERS, getSubjectsForGrade } from '../types'
+import { Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
 import { addRecord } from '../db'
-import { generateId, getTodayDate, loadGrade } from '../utils'
+import { generateId, getTodayDate, loadGrade, loadUserNames } from '../utils'
 
 interface TimerViewProps {
   onRecordAdded: () => void
@@ -30,16 +30,21 @@ function calcDurationSeconds(start: string, end: string): number {
 
 export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [showManual, setShowManual] = useState(false)
-  const [manualUser, setManualUser] = useState<string>(USERS[0])
+  const [users, setUsers] = useState<string[]>(() => loadUserNames())
+  const [manualUserIdx, setManualUserIdx] = useState<number>(0)
   const [manualSubject, setManualSubject] = useState<Subject | null>(null)
   const [manualStart, setManualStart] = useState('')
   const [manualEnd, setManualEnd] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  const handleUserConfigChange = () => {
+    setUsers(loadUserNames())
+  }
+
   const manualSubjects = useMemo(() => {
-    const grade = loadGrade(manualUser)
+    const grade = loadGrade(manualUserIdx)
     return getSubjectsForGrade(grade as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)
-  }, [manualUser])
+  }, [manualUserIdx])
 
   if (manualSubject && !manualSubjects.includes(manualSubject)) {
     setManualSubject(null)
@@ -68,7 +73,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
         endTime: endISO,
         durationSeconds: calcDurationSeconds(startISO, endISO),
         date: getTodayDate(),
-        user: manualUser
+        user: users[manualUserIdx]
       }
       await addRecord(record)
       setShowManual(false)
@@ -107,9 +112,19 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
       {!showManual ? (
         <>
           <div className="timer-panels">
-            <TimerPanel userName={USERS[0]} onRecordAdded={onRecordAdded} />
+            <TimerPanel
+              userIndex={0}
+              userName={users[0]}
+              onRecordAdded={onRecordAdded}
+              onUserConfigChange={handleUserConfigChange}
+            />
             <div className="timer-panels__divider" />
-            <TimerPanel userName={USERS[1]} onRecordAdded={onRecordAdded} />
+            <TimerPanel
+              userIndex={1}
+              userName={users[1]}
+              onRecordAdded={onRecordAdded}
+              onUserConfigChange={handleUserConfigChange}
+            />
           </div>
 
           <div className="manual-entry-section">
@@ -125,11 +140,11 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
           <div className="manual-form__field">
             <label className="manual-form__label">用户</label>
             <div className="user-tabs">
-              {USERS.map(u => (
+              {users.map((u, i) => (
                 <button
-                  key={u}
-                  className={`user-tabs__tab ${manualUser === u ? 'user-tabs__tab--active' : ''}`}
-                  onClick={() => setManualUser(u)}
+                  key={i}
+                  className={`user-tabs__tab ${manualUserIdx === i ? 'user-tabs__tab--active' : ''}`}
+                  onClick={() => setManualUserIdx(i)}
                 >
                   {u}
                 </button>

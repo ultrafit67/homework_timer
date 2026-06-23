@@ -5,18 +5,21 @@ import { SubjectButton } from './SubjectButton'
 import { TimerDisplay } from './TimerDisplay'
 import { ConfirmDialog } from './ConfirmDialog'
 import { addRecord } from '../db'
-import { loadGrade, saveGrade } from '../utils'
+import { loadGrade, saveGrade, saveUserName } from '../utils'
 
 interface TimerPanelProps {
+  userIndex: number
   userName: string
   onRecordAdded: () => void
+  onUserConfigChange?: () => void
 }
 
-export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
+export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigChange }: TimerPanelProps) {
   const timer = useTimer(userName)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [showGradePicker, setShowGradePicker] = useState(false)
-  const [grade, setGrade] = useState<number>(() => loadGrade(userName))
+  const [showConfig, setShowConfig] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [grade, setGrade] = useState<number>(() => loadGrade(userIndex))
   const [error, setError] = useState<string | null>(null)
 
   const subjects = useMemo(() => getSubjectsForGrade(grade as Grade | 0), [grade])
@@ -25,13 +28,9 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
   const isPaused = timer.status === 'paused'
   const isRunning = isTiming || isPaused
 
-  const handleStart = () => {
-    timer.start()
-  }
+  const handleStart = () => { timer.start() }
 
-  const handleComplete = () => {
-    setShowConfirm(true)
-  }
+  const handleComplete = () => { setShowConfirm(true) }
 
   const handleConfirmComplete = async () => {
     setShowConfirm(false)
@@ -51,10 +50,20 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
     timer.selectSubject(subject)
   }
 
-  const handleGradeSelect = (g: number) => {
-    setGrade(g)
-    saveGrade(userName, g)
-    setShowGradePicker(false)
+  const openConfig = () => {
+    setEditName(userName)
+    setShowConfig(true)
+  }
+
+  const handleConfigSave = (newGrade: number) => {
+    const trimmed = editName.trim()
+    if (trimmed) {
+      saveUserName(userIndex, trimmed)
+    }
+    saveGrade(userIndex, newGrade)
+    setGrade(newGrade)
+    setShowConfig(false)
+    onUserConfigChange?.()
   }
 
   const confirmMessage = timer.selectedSubject
@@ -64,7 +73,7 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
   return (
     <div className="timer-panel">
       <div className="timer-panel__header-row">
-        <span className="timer-panel__name" onClick={() => setShowGradePicker(true)}>
+        <span className="timer-panel__name" onClick={openConfig}>
           {userName}
           {grade > 0 && <span className="timer-panel__grade-badge">{grade}年级</span>}
         </span>
@@ -87,28 +96,18 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
 
       <div className="action-buttons">
         {timer.status === 'subjectSelected' && (
-          <button className="btn btn--primary btn--large" onClick={handleStart}>
-            开始
-          </button>
+          <button className="btn btn--primary btn--large" onClick={handleStart}>开始</button>
         )}
         {isTiming && (
           <div className="action-buttons__row">
-            <button className="btn btn--secondary btn--large action-buttons__half" onClick={timer.pause}>
-              暂停
-            </button>
-            <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>
-              完成
-            </button>
+            <button className="btn btn--secondary btn--large action-buttons__half" onClick={timer.pause}>暂停</button>
+            <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>完成</button>
           </div>
         )}
         {isPaused && (
           <div className="action-buttons__row">
-            <button className="btn btn--primary btn--large action-buttons__half" onClick={timer.resume}>
-              继续
-            </button>
-            <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>
-              完成
-            </button>
+            <button className="btn btn--primary btn--large action-buttons__half" onClick={timer.resume}>继续</button>
+            <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>完成</button>
           </div>
         )}
       </div>
@@ -121,26 +120,42 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
         onCancel={() => setShowConfirm(false)}
       />
 
-      {showGradePicker && (
-        <div className="dialog-overlay" onClick={() => setShowGradePicker(false)}>
-          <div className="dialog dialog--grade" onClick={e => e.stopPropagation()}>
-            <h3 className="dialog__title">选择年级</h3>
-            <div className="grade-grid">
-              <button
-                className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
-                onClick={() => handleGradeSelect(0)}
-              >
-                全部
-              </button>
-              {GRADES.map(g => (
+      {showConfig && (
+        <div className="dialog-overlay" onClick={() => setShowConfig(false)}>
+          <div className="dialog dialog--config" onClick={e => e.stopPropagation()}>
+            <h3 className="dialog__title">用户设置</h3>
+
+            <div className="dialog__field">
+              <label className="dialog__label">名称</label>
+              <input
+                type="text"
+                className="dialog__input"
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                maxLength={10}
+                autoFocus
+              />
+            </div>
+
+            <div className="dialog__field">
+              <label className="dialog__label">年级</label>
+              <div className="grade-grid">
                 <button
-                  key={g}
-                  className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
-                  onClick={() => handleGradeSelect(g)}
+                  className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
+                  onClick={() => handleConfigSave(0)}
                 >
-                  {g}年级
+                  全部
                 </button>
-              ))}
+                {GRADES.map(g => (
+                  <button
+                    key={g}
+                    className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
+                    onClick={() => handleConfigSave(g)}
+                  >
+                    {g}年级
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

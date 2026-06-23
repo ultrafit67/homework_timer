@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { HomeworkRecord, Subject, SUBJECTS, USERS } from '../types'
+import { HomeworkRecord, Subject, SUBJECTS } from '../types'
+import { loadUserNames } from '../utils'
 
 interface EditRecordDialogProps {
   record: HomeworkRecord
@@ -90,7 +91,7 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
         <div className="dialog__field">
           <label className="dialog__label">用户</label>
           <div className="dialog__subject-group">
-            {USERS.map(u => (
+            {loadUserNames().map(u => (
               <button
                 key={u}
                 className={`subject-btn ${user === u ? 'subject-btn--active' : ''}`}

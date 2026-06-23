@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { HomeworkRecord, Subject, TimeStats, USERS } from '../types'
+import { HomeworkRecord, Subject, TimeStats } from '../types'
 import * as db from '../db'
-import { computeStats, getTodayDate, getWeekStart, getWeekId } from '../utils'
+import { computeStats, getTodayDate, getWeekStart, getWeekId, loadUserNames } from '../utils'
 
 interface UseRecordsReturn {
   records: HomeworkRecord[]
@@ -24,7 +24,7 @@ export function useRecords(): UseRecordsReturn {
   const [records, setRecords] = useState<HomeworkRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [subjectFilter, setSubjectFilter] = useState<Subject | null>(null)
-  const [userFilter, setUserFilter] = useState<string | null>(USERS[0])
+  const [userFilter, setUserFilter] = useState<string | null>(() => loadUserNames()[0])
 
   const refresh = useCallback(async () => {
     setLoading(true)

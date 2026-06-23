@@ -1,4 +1,4 @@
-import { SUBJECTS, TimeStats, HomeworkRecord } from './types'
+import { SUBJECTS, TimeStats, HomeworkRecord, USERS } from './types'
 
 export function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -61,20 +61,42 @@ export function computeStats(records: HomeworkRecord[]): TimeStats[] {
 }
 
 const GRADE_STORAGE_PREFIX = 'homework-grade-'
+const NAME_STORAGE_PREFIX = 'homework-name-'
 
-export function loadGrade(userName: string): number {
+const GRADE_DEFAULTS = [0, 0]
+
+export function loadGrade(userIndex: number): number {
   try {
-    const stored = localStorage.getItem(`${GRADE_STORAGE_PREFIX}${userName}`)
+    const stored = localStorage.getItem(`${GRADE_STORAGE_PREFIX}${userIndex}`)
     if (stored !== null) {
       const g = parseInt(stored, 10)
       if (g >= 0 && g <= 9) return g
     }
   } catch { /* localStorage unavailable */ }
-  return 0
+  return GRADE_DEFAULTS[userIndex] ?? 0
 }
 
-export function saveGrade(userName: string, grade: number): void {
+export function saveGrade(userIndex: number, grade: number): void {
   try {
-    localStorage.setItem(`${GRADE_STORAGE_PREFIX}${userName}`, String(grade))
+    localStorage.setItem(`${GRADE_STORAGE_PREFIX}${userIndex}`, String(grade))
+  } catch { /* localStorage unavailable */ }
+}
+
+export function loadUserNames(): string[] {
+  try {
+    const name0 = localStorage.getItem(`${NAME_STORAGE_PREFIX}0`)
+    const name1 = localStorage.getItem(`${NAME_STORAGE_PREFIX}1`)
+    return [
+      name0 || USERS[0],
+      name1 || USERS[1]
+    ]
+  } catch {
+    return [...USERS]
+  }
+}
+
+export function saveUserName(userIndex: number, name: string): void {
+  try {
+    localStorage.setItem(`${NAME_STORAGE_PREFIX}${userIndex}`, name)
   } catch { /* localStorage unavailable */ }
 }

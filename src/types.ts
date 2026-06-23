@@ -25,7 +25,7 @@ export interface HomeworkRecord {
   user: string       // User name, e.g. '刘梦珊' | '刘梦苒'
 }
 
-export const USERS = ['刘梦珊', '刘梦苒'] as const
+export const USERS = ['老大', '老二'] as const
 export type UserId = typeof USERS[number]
 
 export interface TimeStats {

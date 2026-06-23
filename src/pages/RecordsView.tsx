@@ -3,7 +3,8 @@ import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import * as db from '../db'
-import { SUBJECTS, Subject, HomeworkRecord, USERS } from '../types'
+import { SUBJECTS, Subject, HomeworkRecord } from '../types'
+import { loadUserNames } from '../utils'
 
 const PAGE_SIZE = 20
 
@@ -79,7 +80,7 @@ export function RecordsView() {
       <h2 className="page__title">记录</h2>
 
       <div className="user-tabs">
-        {USERS.map(u => (
+        {loadUserNames().map(u => (
           <button
             key={u}
             className={`user-tabs__tab ${userFilter === u ? 'user-tabs__tab--active' : ''}`}

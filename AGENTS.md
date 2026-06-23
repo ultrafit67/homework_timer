@@ -1,19 +1,20 @@
 # AGENTS.md - homework_app
 
-A PWA homework timer for 2 users (刘梦珊, 刘梦苒): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI.
+A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI.
 
 ## Architecture
 
 ```
 src/
   types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade
-  utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats, loadGrade, saveGrade
+  utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats,
+                     loadGrade, saveGrade, loadUserNames, saveUserName
   db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
   hooks/
     useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
     useRecords.ts  — CRUD + computed stats + user/subject filter
   components/
-    TimerPanel.tsx — Single-user timer panel (header + grade picker + subject grid + buttons)
+    TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade)
     SubjectButton, TimerDisplay, ConfirmDialog
     RecordItem, EditRecordDialog
     TotalTimeCard, RankingItem
@@ -31,16 +32,18 @@ src/
 
 ## Multi-user features
 
-- Two fixed users: `USERS = ['刘梦珊', '刘梦苒']` in `types.ts`.
+- Two users: default names `USERS = ['老大', '老二']` in `types.ts`. **Editable** — saved to `homework-name-0/1` in localStorage.
+- `loadUserNames()` (in `utils.ts`) returns effective names (localStorage override → `USERS` fallback).
+- All UI tabs (Stats, Records, manual form, EditRecordDialog) use `loadUserNames()` instead of `USERS` directly, so name edits reflect immediately on re-render.
 - `HomeworkRecord.user` (string) stores which user the record belongs to. Required field.
 - `useTimer(userName)` accepts userName, `complete()` returns record with that user.
-- `useRecords` defaults `userFilter` to `USERS[0]`. Stats/Records pages show user tab bar (no "全部").
+- `useRecords` defaults `userFilter` to `loadUserNames()[0]`. Stats/Records pages show user tab bar (no "全部").
 - Data migration (v2→v3) runs lazily in `migrateRecords()`: assigns `USERS[0]` to existing records with no `user` field.
 
 ## Grade-based subject filtering
 
-- Click user name on timer page → grade picker dialog (1-9 + 全部).
-- Grade saved to localStorage (`homework-grade-{userName}`).
+- Click user name on timer page → user config dialog (name text input + grade picker 1-9 + 全部).
+- Grade saved to localStorage by **user index** (`homework-grade-0`, `homework-grade-1`), not by name — renaming doesn't lose grade setting.
 - Subjects shown per grade (cumulative):
   - 1-2: 语文, 数学
   - 3-5: +英语
@@ -48,7 +51,7 @@ src/
   - 7: +历史
   - 8: +物理
   - 9: +化学
-- `getSubjectsForGrade(grade)` in `types.ts`, `loadGrade()/saveGrade()` in `utils.ts`.
+- `getSubjectsForGrade(grade)` in `types.ts`, `loadGrade(userIndex)/saveGrade(userIndex)` in `utils.ts`.
 - Manual record form also filters subjects by selected user's grade.
 
 ## Timer state machine (`useTimer.ts`)
@@ -122,3 +125,5 @@ src/
 - Record `startTime`/`endTime` are ISO 8601 UTC strings. `formatTime()` converts to local time for display.
 - Manual record form uses `datetime-local` inputs, converted to ISO strings via `new Date(localStr).toISOString()`.
 - Surge deployment blocked (API server `surge.surge.sh:443` unreachable).
+- User names are stored per-index in localStorage (`homework-name-0/1`). Old records keep the original name at save time — renaming doesn't retroactively update records.
+- **TimerPanel** receives `userName` as prop + `userIndex` (0/1) for localStorage key access; grade is stored by index, name is overridable.

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { TotalTimeCard } from '../components/TotalTimeCard'
 import { RankingItem } from '../components/RankingItem'
-import { PeriodType, USERS } from '../types'
+import { PeriodType } from '../types'
+import { loadUserNames } from '../utils'
 
 export function StatsView() {
   const { dailyStats, weeklyStats, dailyTotal, weeklyTotal, weeklyTotals, loading, userFilter, filterByUser } = useRecords()
@@ -56,7 +57,7 @@ export function StatsView() {
       <h2 className="page__title">统计</h2>
 
       <div className="user-tabs">
-        {USERS.map(u => (
+        {loadUserNames().map(u => (
           <button
             key={u}
             className={`user-tabs__tab ${userFilter === u ? 'user-tabs__tab--active' : ''}`}
