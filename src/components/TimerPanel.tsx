@@ -4,7 +4,7 @@ import { useTimer } from '../hooks/useTimer'
 import { SubjectButton } from './SubjectButton'
 import { TimerDisplay } from './TimerDisplay'
 import { ConfirmDialog } from './ConfirmDialog'
-import { addRecord } from '../db'
+import { addRecord, renameUserRecords } from '../db'
 import { loadGrade, saveGrade, saveUserName } from '../utils'
 
 interface TimerPanelProps {
@@ -55,9 +55,10 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
     setShowConfig(true)
   }
 
-  const handleConfigSave = (newGrade: number) => {
+  const handleConfigSave = async (newGrade: number) => {
     const trimmed = editName.trim()
-    if (trimmed) {
+    if (trimmed && trimmed !== userName) {
+      await renameUserRecords(userName, trimmed)
       saveUserName(userIndex, trimmed)
     }
     saveGrade(userIndex, newGrade)

@@ -86,7 +86,7 @@ src/
 
 - Store: `homework-timer.records` (keyPath: `id`)
 - Indexes: `date`, `subject`, `startTime`, `user` (added in v3)
-- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`
+- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`
 - Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
 
 ## Routes
@@ -125,5 +125,5 @@ src/
 - Record `startTime`/`endTime` are ISO 8601 UTC strings. `formatTime()` converts to local time for display.
 - Manual record form uses `datetime-local` inputs, converted to ISO strings via `new Date(localStr).toISOString()`.
 - Surge deployment blocked (API server `surge.surge.sh:443` unreachable).
-- User names are stored per-index in localStorage (`homework-name-0/1`). Old records keep the original name at save time — renaming doesn't retroactively update records.
+- User names are stored per-index in localStorage (`homework-name-0/1`). Renaming a user in the config dialog **auto-updates** all existing IndexedDB records for that user (via `renameUserRecords()` in `db.ts`).
 - **TimerPanel** receives `userName` as prop + `userIndex` (0/1) for localStorage key access; grade is stored by index, name is overridable.

@@ -131,6 +131,27 @@ export async function importRecords(records: HomeworkRecord[]): Promise<{ import
   return { imported, skipped }
 }
 
+export async function renameUserRecords(oldName: string, newName: string): Promise<number> {
+  const db = await getDb()
+  const tx = db.transaction(STORE_NAME, 'readwrite')
+  const store = tx.objectStore(STORE_NAME)
+  const index = store.index('user')
+  let cursor = await index.openCursor(IDBKeyRange.only(oldName))
+  let count = 0
+  while (cursor) {
+    const record = cursor.value as HomeworkRecord
+    record.user = newName
+    await cursor.update(record)
+    count++
+    cursor = await cursor.continue()
+  }
+  await tx.done
+  if (count > 0) {
+    console.log(`[DB] Renamed ${count} records: "${oldName}" → "${newName}"`)
+  }
+  return count
+}
+
 export async function getDateGroups(): Promise<string[]> {
   const db = await getDb()
   const dates = new Set<string>()
