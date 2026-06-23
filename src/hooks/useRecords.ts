@@ -25,6 +25,7 @@ interface UseRecordsReturn {
   subjectFilter: Subject | null
   filterByUser: (user: string | null) => void
   userFilter: string | null
+  allRecords: HomeworkRecord[]  // user-filtered only, for charts/trend
 }
 
 export function useRecords(): UseRecordsReturn {
@@ -106,6 +107,7 @@ export function useRecords(): UseRecordsReturn {
 
   return {
     records: filteredRecords,
+    allRecords: baseRecords,
     loading,
     dailyStats,
     weeklyStats,

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HomeworkRecord, Subject, SUBJECTS } from '../types'
+import { HomeworkRecord, Subject, SUBJECTS, SUBJECT_COLORS, SUBJECT_ICONS } from '../types'
 import { loadUserNames } from '../utils'
 
 interface EditRecordDialogProps {
@@ -80,8 +80,15 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
               <button
                 key={s}
                 className={`subject-btn ${subject === s ? 'subject-btn--active' : ''}`}
+                style={{
+                  '--subject-color': SUBJECT_COLORS[s],
+                  ...(subject === s ? { background: SUBJECT_COLORS[s], borderColor: SUBJECT_COLORS[s] } : {})
+                } as React.CSSProperties}
                 onClick={() => setSubject(s)}
               >
+                <span className="subject-btn__icon" style={{ background: SUBJECT_COLORS[s] }}>
+                  {SUBJECT_ICONS[s]}
+                </span>
                 {s}
               </button>
             ))}

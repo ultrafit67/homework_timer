@@ -1,20 +1,10 @@
-import { Subject } from '../types'
+import { Subject, SUBJECT_COLORS, SUBJECT_ICONS } from '../types'
 
 interface SubjectButtonProps {
   subject: Subject
   selected: boolean
   disabled: boolean
   onClick: (subject: Subject) => void
-}
-
-const SUBJECT_COLORS: Record<Subject, string> = {
-  '语文': '#EF4444',
-  '数学': '#3B82F6',
-  '英语': '#10B981',
-  '道法': '#F59E0B',
-  '历史': '#8B5CF6',
-  '物理': '#EC4899',
-  '化学': '#06B6D4'
 }
 
 export function SubjectButton({ subject, selected, disabled, onClick }: SubjectButtonProps) {
@@ -28,6 +18,9 @@ export function SubjectButton({ subject, selected, disabled, onClick }: SubjectB
       onClick={() => onClick(subject)}
       disabled={disabled && !selected}
     >
+      <span className="subject-btn__icon" style={{ background: SUBJECT_COLORS[subject] }}>
+        {SUBJECT_ICONS[subject]}
+      </span>
       {subject}
     </button>
   )

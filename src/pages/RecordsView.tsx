@@ -3,7 +3,7 @@ import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import * as db from '../db'
-import { SUBJECTS, Subject, HomeworkRecord } from '../types'
+import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS } from '../types'
 import { loadUserNames } from '../utils'
 
 const PAGE_SIZE = 20
@@ -128,6 +128,7 @@ export function RecordsView() {
           <button
             key={s}
             className={`filter-bar__btn ${subjectFilter === s ? 'filter-bar__btn--active' : ''}`}
+            style={subjectFilter === s ? { background: SUBJECT_COLORS[s], borderColor: SUBJECT_COLORS[s] } : { borderColor: SUBJECT_COLORS[s] }}
             onClick={() => handleFilter(s)}
           >
             {s}

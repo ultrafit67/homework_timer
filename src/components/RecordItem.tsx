@@ -1,4 +1,4 @@
-import { HomeworkRecord } from '../types'
+import { HomeworkRecord, SUBJECT_COLORS, SUBJECT_ICONS } from '../types'
 import { formatTime, formatDuration } from '../utils'
 
 interface RecordItemProps {
@@ -7,20 +7,14 @@ interface RecordItemProps {
   onEdit: (record: HomeworkRecord) => void
 }
 
-const SUBJECT_COLORS: Record<string, string> = {
-  '语文': '#EF4444',
-  '数学': '#3B82F6',
-  '英语': '#10B981',
-  '道法': '#F59E0B',
-  '历史': '#8B5CF6',
-  '物理': '#EC4899',
-  '化学': '#06B6D4'
-}
-
 export function RecordItem({ record, onDelete, onEdit }: RecordItemProps) {
   return (
     <div className="record-item">
-      <div className="record-item__subject" style={{ backgroundColor: SUBJECT_COLORS[record.subject] }}>
+      <div
+        className="record-item__subject"
+        style={{ backgroundColor: SUBJECT_COLORS[record.subject] }}
+      >
+        <span className="record-item__subject-icon">{SUBJECT_ICONS[record.subject]}</span>
         {record.subject}
       </div>
       <div className="record-item__user">{record.user}</div>
