@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: '/homework_timer/',
   server: {
     host: '0.0.0.0'
   },
@@ -19,7 +20,7 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        start_url: '/homework_timer/',
         icons: [
           {
             src: 'favicon.svg',
