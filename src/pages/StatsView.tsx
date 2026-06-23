@@ -25,23 +25,16 @@ export function StatsView() {
   const [showWeekRanking, setShowWeekRanking] = useState(false)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null)
 
-  if (loading) {
-    return <div className="page"><p className="loading-text">加载中...</p></div>
-  }
-
-  const periodLabel = period === 'daily' ? '今日' : period === 'weekly' ? '本周' : ''
-  const total = period === 'daily' ? dailyTotal : period === 'weekly' ? weeklyTotal : 0
-
-  // === Trend data computation ===
+  // All hooks MUST be before conditional returns - Rules of Hooks
   const trendData = useMemo<TrendPoint[]>(() => {
-    if (period !== 'trend') return []
+    if (period !== 'trend' || allRecords.length === 0) return []
 
     const groups = new Map<string, Map<Subject, number>>()
 
     for (const r of allRecords) {
       const key = trendPeriod === 'weekly'
         ? getWeekId(r.date)
-        : r.date.slice(0, 7) // YYYY-MM
+        : r.date.slice(0, 7)
 
       if (!groups.has(key)) groups.set(key, new Map())
       const subMap = groups.get(key)!
@@ -51,7 +44,6 @@ export function StatsView() {
     const sorted = Array.from(groups.entries())
       .sort(([a], [b]) => a.localeCompare(b))
 
-    // Take last 12 periods
     const latest = sorted.slice(-12)
 
     return latest.map(([key, subMap]) => {
@@ -78,7 +70,6 @@ export function StatsView() {
     return Math.max(maxH, 1)
   }, [trendData])
 
-  // Collect all subjects that appear in trend data
   const trendSubjects = useMemo(() => {
     const set = new Set<Subject>()
     for (const d of trendData) {
@@ -87,12 +78,20 @@ export function StatsView() {
     return Array.from(set)
   }, [trendData])
 
-  // === Shared chart helpers ===
+  // Early return for loading state
+  if (loading) {
+    return <div className="page"><p className="loading-text">加载中...</p></div>
+  }
+
+  // Non-hook computations after the early return are fine
+  const periodLabel = period === 'daily' ? '今日' : period === 'weekly' ? '本周' : ''
+  const total = period === 'daily' ? dailyTotal : period === 'weekly' ? weeklyTotal : 0
+
   const maxSeconds = Math.max(...(period !== 'trend' ? [...dailyStats, ...weeklyStats].map(s => s.totalSeconds) : []), 1)
   const dayTotals = period === 'weekly' ? weeklyDayTotals : null
   const maxDaySeconds = Math.max(...(dayTotals?.map(d => d.totalSeconds) ?? [0]), 1)
 
-  // === Week ranking view ===
+  // Week ranking view (conditional return is fine - all hooks ran above)
   if (showWeekRanking) {
     return (
       <div className="page stats-page">
@@ -167,7 +166,6 @@ export function StatsView() {
         </div>
       )}
 
-      {/* Daily / Weekly subject bar chart */}
       {period !== 'trend' && stats.length > 0 && (
         <div className="chart-section">
           <h3 className="chart-section__title">科目用时</h3>
@@ -188,7 +186,6 @@ export function StatsView() {
         </div>
       )}
 
-      {/* Weekly per-day bar chart */}
       {period === 'weekly' && dayTotals && dayTotals.some(d => d.totalSeconds > 0) && (
         <div className="chart-section">
           <h3 className="chart-section__title">每日用时</h3>
@@ -209,7 +206,6 @@ export function StatsView() {
         </div>
       )}
 
-      {/* Trend Chart */}
       {period === 'trend' && (
         <div className="trend-chart">
           <div className="period-toggle period-toggle--small">
@@ -232,7 +228,6 @@ export function StatsView() {
                 viewBox={`0 0 ${CHART_W} ${CHART_H}`}
                 preserveAspectRatio="xMidYMid meet"
               >
-                {/* Y axis grid lines */}
                 {Array.from({ length: 5 }, (_, i) => {
                   const val = (maxTrendHours / 4) * i
                   const y = PAD.top + PLOT_H - (val / maxTrendHours) * PLOT_H
@@ -246,7 +241,6 @@ export function StatsView() {
                   )
                 })}
 
-                {/* X axis labels */}
                 {trendData.map((d, i) => {
                   const x = PAD.left + (i / Math.max(trendData.length - 1, 1)) * PLOT_W
                   return (
@@ -256,7 +250,6 @@ export function StatsView() {
                   )
                 })}
 
-                {/* Lines for each subject */}
                 {trendSubjects.map(subject => {
                   const color = SUBJECT_COLORS[subject]
                   const points = trendData.map((d, i) => {
@@ -267,11 +260,10 @@ export function StatsView() {
                     return { x, y, sec }
                   })
 
-                  // Check if this subject has any data at all
                   const hasData = points.some(p => p.sec > 0)
                   if (!hasData) return null
 
-              return (
+                  return (
                     <g key={subject}>
                       <polyline
                         points={points.map(p => `${p.x},${p.y}`).join(' ')}
@@ -309,7 +301,6 @@ export function StatsView() {
                 })}
               </svg>
 
-              {/* Legend */}
               <div className="trend-chart__legend">
                 {trendSubjects.map(subject => (
                   <div key={subject} className="trend-chart__legend-item">
@@ -319,7 +310,6 @@ export function StatsView() {
                 ))}
               </div>
 
-              {/* Tooltip */}
               {tooltip && (
                 <div className="trend-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
                   {tooltip.text}
