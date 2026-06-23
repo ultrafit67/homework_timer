@@ -32,6 +32,7 @@ src/
 - **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
 - **@cloudbase/js-sdk is bundled inline.** There is no `@cloudbase` entry in `tsconfig.json` paths — SDK is resolved directly from `node_modules` at build time. The bundle size warning (~1MB JS) is expected.
 - **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
+- **Timer state persisted to `sessionStorage`.** Timer state (status, selectedSubject, accruedMs, timingStart) is saved to `sessionStorage` on every change and restored on mount. This survives page refresh/reload. Keyed by `userName` (`timer-state-{userName}`). Cleared on complete/reset. This means the timer survives browser tab restorations that trigger a page reload.
 
 ## Multi-user features
 
