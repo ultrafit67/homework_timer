@@ -20,7 +20,7 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/homework_timer/',
+        start_url: '/homework_timer/#/',
         icons: [
           {
             src: 'favicon.svg',
