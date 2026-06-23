@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { TotalTimeCard } from '../components/TotalTimeCard'
 import { RankingItem } from '../components/RankingItem'
-import { PeriodType } from '../types'
+import { PeriodType, USERS } from '../types'
 
 export function StatsView() {
-  const { dailyStats, weeklyStats, dailyTotal, weeklyTotal, weeklyTotals, loading } = useRecords()
+  const { dailyStats, weeklyStats, dailyTotal, weeklyTotal, weeklyTotals, loading, userFilter, filterByUser } = useRecords()
   const [period, setPeriod] = useState<PeriodType>('daily')
   const [showWeekRanking, setShowWeekRanking] = useState(false)
 
@@ -54,6 +54,24 @@ export function StatsView() {
   return (
     <div className="page stats-page">
       <h2 className="page__title">统计</h2>
+
+      <div className="user-tabs">
+        <button
+          className={`user-tabs__tab ${userFilter === null ? 'user-tabs__tab--active' : ''}`}
+          onClick={() => filterByUser(null)}
+        >
+          全部
+        </button>
+        {USERS.map(u => (
+          <button
+            key={u}
+            className={`user-tabs__tab ${userFilter === u ? 'user-tabs__tab--active' : ''}`}
+            onClick={() => filterByUser(u)}
+          >
+            {u}
+          </button>
+        ))}
+      </div>
 
       <div className="period-toggle">
         <button

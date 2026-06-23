@@ -23,6 +23,7 @@ export function RecordItem({ record, onDelete, onEdit }: RecordItemProps) {
       <div className="record-item__subject" style={{ backgroundColor: SUBJECT_COLORS[record.subject] }}>
         {record.subject}
       </div>
+      <div className="record-item__user">{record.user}</div>
       <div className="record-item__body">
         <div className="record-item__date">{record.date}</div>
         <div className="record-item__time-range">

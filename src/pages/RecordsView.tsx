@@ -3,12 +3,12 @@ import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import * as db from '../db'
-import { SUBJECTS, Subject, HomeworkRecord } from '../types'
+import { SUBJECTS, Subject, HomeworkRecord, USERS } from '../types'
 
 const PAGE_SIZE = 20
 
 export function RecordsView() {
-  const { records, loading, deleteRecord, updateRecord, filterBySubject, subjectFilter, refresh } = useRecords()
+  const { records, loading, deleteRecord, updateRecord, filterBySubject, subjectFilter, userFilter, filterByUser, refresh } = useRecords()
   const [page, setPage] = useState(0)
   const [editingRecord, setEditingRecord] = useState<HomeworkRecord | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -73,6 +73,24 @@ export function RecordsView() {
   return (
     <div className="page records-page">
       <h2 className="page__title">记录</h2>
+
+      <div className="user-tabs">
+        <button
+          className={`user-tabs__tab ${userFilter === null ? 'user-tabs__tab--active' : ''}`}
+          onClick={() => { filterByUser(null); setPage(0) }}
+        >
+          全部
+        </button>
+        {USERS.map(u => (
+          <button
+            key={u}
+            className={`user-tabs__tab ${userFilter === u ? 'user-tabs__tab--active' : ''}`}
+            onClick={() => { filterByUser(u); setPage(0) }}
+          >
+            {u}
+          </button>
+        ))}
+      </div>
 
       <div className="filter-bar">
         <button

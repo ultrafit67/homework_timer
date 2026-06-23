@@ -16,12 +16,15 @@ interface UseRecordsReturn {
   updateRecord: (record: HomeworkRecord) => Promise<void>
   filterBySubject: (subject: Subject | null) => void
   subjectFilter: Subject | null
+  filterByUser: (user: string | null) => void
+  userFilter: string | null
 }
 
 export function useRecords(): UseRecordsReturn {
   const [records, setRecords] = useState<HomeworkRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [subjectFilter, setSubjectFilter] = useState<Subject | null>(null)
+  const [userFilter, setUserFilter] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -47,11 +50,15 @@ export function useRecords(): UseRecordsReturn {
     await refresh()
   }, [refresh])
 
+  const baseRecords = userFilter
+    ? records.filter(r => r.user === userFilter)
+    : records
+
   const today = getTodayDate()
-  const todayRecords = records.filter(r => r.date === today)
+  const todayRecords = baseRecords.filter(r => r.date === today)
 
   const weekStart = getWeekStart(today)
-  const weekRecords = records.filter(r => r.date >= weekStart && r.date <= today)
+  const weekRecords = baseRecords.filter(r => r.date >= weekStart && r.date <= today)
 
   const dailyStats = computeStats(todayRecords)
   const weeklyStats = computeStats(weekRecords)
@@ -60,22 +67,21 @@ export function useRecords(): UseRecordsReturn {
 
   // Weekly totals: group records by week, sum durations
   const weekGroups = new Map<string, number>()
-  for (const r of records) {
+  for (const r of baseRecords) {
     const wid = getWeekId(r.date)
     weekGroups.set(wid, (weekGroups.get(wid) || 0) + r.durationSeconds)
   }
   const weeklyTotals = Array.from(weekGroups.entries())
     .map(([weekId, totalSeconds]) => ({ weekId, totalSeconds }))
     .sort((a, b) => {
-      // Sort by year-week descending
       const [aYear, aWeek] = a.weekId.split('-W').map(Number)
       const [bYear, bWeek] = b.weekId.split('-W').map(Number)
       return bYear - aYear || bWeek - aWeek
     })
 
   const filteredRecords = subjectFilter
-    ? records.filter(r => r.subject === subjectFilter)
-    : records
+    ? baseRecords.filter(r => r.subject === subjectFilter)
+    : baseRecords
 
   return {
     records: filteredRecords,
@@ -89,6 +95,8 @@ export function useRecords(): UseRecordsReturn {
     deleteRecord: handleDelete,
     updateRecord: handleUpdate,
     filterBySubject: setSubjectFilter,
-    subjectFilter
+    subjectFilter,
+    filterByUser: setUserFilter,
+    userFilter
   }
 }

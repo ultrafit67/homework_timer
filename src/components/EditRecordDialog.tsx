@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HomeworkRecord, Subject, SUBJECTS } from '../types'
+import { HomeworkRecord, Subject, SUBJECTS, USERS } from '../types'
 
 interface EditRecordDialogProps {
   record: HomeworkRecord
@@ -28,6 +28,7 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
   const [startTime, setStartTime] = useState(extractTime(record.startTime))
   const [endTime, setEndTime] = useState(extractTime(record.endTime))
   const [subject, setSubject] = useState<Subject>(record.subject)
+  const [user, setUser] = useState(record.user)
   const [saving, setSaving] = useState(false)
 
   const computePreview = (): number => {
@@ -55,6 +56,7 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
       await onSave({
         ...record,
         subject,
+        user,
         startTime: newStartISO,
         endTime: newEndISO,
         durationSeconds,
@@ -80,6 +82,21 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
                 onClick={() => setSubject(s)}
               >
                 {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="dialog__field">
+          <label className="dialog__label">用户</label>
+          <div className="dialog__subject-group">
+            {USERS.map(u => (
+              <button
+                key={u}
+                className={`subject-btn ${user === u ? 'subject-btn--active' : ''}`}
+                onClick={() => setUser(u)}
+              >
+                {u}
               </button>
             ))}
           </div>
