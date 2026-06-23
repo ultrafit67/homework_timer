@@ -98,7 +98,7 @@ export function useTimer(userName: string): UseTimerReturn {
 
   const complete = useCallback(() => {
     const s = stateRef.current
-    if ((s.status === 'timing' || s.status === 'paused') && s.selectedSubject && s.startTime) {
+    if (s.selectedSubject && s.startTime) {
       const now = new Date().toISOString()
       const record = {
         id: generateId(),
