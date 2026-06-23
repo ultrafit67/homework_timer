@@ -49,7 +49,7 @@ src/
 - Click user name on timer page → user config dialog (name text input + grade picker 1-9 + 全部).
 - Grade saved to localStorage by **user index** (`homework-grade-0`, `homework-grade-1`), not by name — renaming doesn't lose grade setting.
 - Subjects shown per grade (cumulative):
-  - 1-2: 语文, 数学
+  - 1-2: 语文, 数学, 背诵
   - 3-5: +英语
   - 6: +道法
   - 7: +历史

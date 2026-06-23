@@ -1,20 +1,10 @@
-import { Subject } from '../types'
+import { Subject, SUBJECT_COLORS } from '../types'
 
 interface RankingItemProps {
   subject: Subject
   totalSeconds: number
   count: number
   rank: number
-}
-
-const SUBJECT_COLORS: Record<Subject, string> = {
-  '语文': '#EF4444',
-  '数学': '#3B82F6',
-  '英语': '#10B981',
-  '道法': '#F59E0B',
-  '历史': '#8B5CF6',
-  '物理': '#EC4899',
-  '化学': '#06B6D4'
 }
 
 export function RankingItem({ subject, totalSeconds, count, rank }: RankingItemProps) {
