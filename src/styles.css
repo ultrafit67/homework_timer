@@ -438,25 +438,88 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* Total Time Card */
-.total-card {
+/* Stats Summary */
+.stats-summary {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
   border-radius: 16px;
-  padding: 24px;
+  padding: 20px;
   text-align: center;
   color: white;
   margin-bottom: 20px;
 }
 
-.total-card__label {
-  font-size: 14px;
-  opacity: 0.9;
-  margin-bottom: 8px;
+.stats-summary__value {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
 }
 
-.total-card__time {
-  font-size: 36px;
-  font-weight: 700;
+.stats-summary__label {
+  display: block;
+  font-size: 13px;
+  opacity: 0.85;
+  margin-top: 6px;
+}
+
+/* Chart Section */
+.chart-section {
+  margin-bottom: 24px;
+}
+
+.chart-section__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--color-text);
+}
+
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chart-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-bar-row__label {
+  width: 42px;
+  font-size: 14px;
+  color: var(--color-text);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.chart-bar-row__track {
+  flex: 1;
+  height: 20px;
+  background: var(--color-bg-secondary, #f0f0f0);
+  border-radius: 10px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.chart-bar-row__fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 10px;
+  transition: width 0.4s ease;
+  min-width: 4px;
+}
+
+.chart-bar-row__fill--alt {
+  background: var(--color-primary-light, #5b8def);
+}
+
+.chart-bar-row__value {
+  width: 72px;
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+  text-align: left;
+  flex-shrink: 0;
 }
 
 /* Ranking List */
@@ -646,6 +709,42 @@ body {
   border-color: var(--color-primary);
 }
 
+/* Date Range Filter */
+.date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.date-range__input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.date-range__sep {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.date-range__clear {
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 4px;
+}
+
 /* Pagination */
 .pagination {
   display: flex;
@@ -789,6 +888,31 @@ body {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.manual-form__mode-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+}
+
+.manual-form__mode-btn {
+  flex: 1;
+  border: none;
+  background: var(--color-bg);
+  padding: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  transition: all 0.2s;
+}
+
+.manual-form__mode-btn--active {
+  background: var(--color-primary);
+  color: white;
 }
 
 .manual-form__time-row {

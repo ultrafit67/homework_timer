@@ -7,8 +7,9 @@ export type TimerStatus = 'idle' | 'subjectSelected' | 'timing' | 'paused'
 interface TimerState {
   status: TimerStatus
   selectedSubject: Subject | null
-  elapsedSeconds: number
-  startTime: string | null
+  startTime: string | null   // ISO string saved in the record
+  timingStart: number | null // Date.now() when the current timing segment began
+  accruedMs: number          // accumulated ms from completed timing segments
 }
 
 interface UseTimerReturn {
@@ -24,35 +25,31 @@ interface UseTimerReturn {
   reset: () => void
 }
 
+function computeElapsed(state: TimerState): number {
+  const now = Date.now()
+  const running = state.timingStart ? now - state.timingStart : 0
+  return state.accruedMs + running
+}
+
 export function useTimer(userName: string): UseTimerReturn {
   const [state, setState] = useState<TimerState>({
     status: 'idle',
     selectedSubject: null,
-    elapsedSeconds: 0,
-    startTime: null
+    startTime: null,
+    timingStart: null,
+    accruedMs: 0
   })
-  const intervalRef = useRef<number | null>(null)
-  // Keep a ref to the latest state so callbacks can read it without stale closures
+  // Tick counter — only purpose is to trigger re-renders so elapsed time refreshes
+  const [, setTick] = useState(0)
   const stateRef = useRef(state)
   stateRef.current = state
 
   useEffect(() => {
     if (state.status === 'timing') {
-      intervalRef.current = window.setInterval(() => {
-        setState(prev => ({ ...prev, elapsedSeconds: prev.elapsedSeconds + 1 }))
+      const id = window.setInterval(() => {
+        setTick(t => t + 1)
       }, 1000)
-    }
-    if (state.status === 'paused') {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-    }
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
+      return () => clearInterval(id)
     }
   }, [state.status])
 
@@ -71,8 +68,13 @@ export function useTimer(userName: string): UseTimerReturn {
   const start = useCallback(() => {
     setState(prev => {
       if (prev.status === 'subjectSelected' && prev.selectedSubject) {
-        const now = new Date().toISOString()
-        return { ...prev, status: 'timing', elapsedSeconds: 0, startTime: now }
+        return {
+          ...prev,
+          status: 'timing',
+          timingStart: Date.now(),
+          startTime: new Date().toISOString(),
+          accruedMs: 0
+        }
       }
       return prev
     })
@@ -80,8 +82,13 @@ export function useTimer(userName: string): UseTimerReturn {
 
   const pause = useCallback(() => {
     setState(prev => {
-      if (prev.status === 'timing') {
-        return { ...prev, status: 'paused' }
+      if (prev.status === 'timing' && prev.timingStart !== null) {
+        return {
+          ...prev,
+          status: 'paused',
+          accruedMs: prev.accruedMs + (Date.now() - prev.timingStart),
+          timingStart: null
+        }
       }
       return prev
     })
@@ -90,7 +97,7 @@ export function useTimer(userName: string): UseTimerReturn {
   const resume = useCallback(() => {
     setState(prev => {
       if (prev.status === 'paused') {
-        return { ...prev, status: 'timing' }
+        return { ...prev, status: 'timing', timingStart: Date.now() }
       }
       return prev
     })
@@ -99,35 +106,50 @@ export function useTimer(userName: string): UseTimerReturn {
   const complete = useCallback(() => {
     const s = stateRef.current
     if (s.selectedSubject && s.startTime) {
+      const elapsedMs = computeElapsed(s)
       const now = new Date().toISOString()
       const record = {
         id: generateId(),
         subject: s.selectedSubject,
         startTime: s.startTime,
         endTime: now,
-        durationSeconds: s.elapsedSeconds,
+        durationSeconds: Math.round(elapsedMs / 1000),
         date: getTodayDate(),
         user: userName
       }
-      setState({ status: 'idle', selectedSubject: null, elapsedSeconds: 0, startTime: null })
+      setState({
+        status: 'idle',
+        selectedSubject: null,
+        startTime: null,
+        timingStart: null,
+        accruedMs: 0
+      })
       return record
     }
     return null
   }, [userName])
 
   const reset = useCallback(() => {
-    setState({ status: 'idle', selectedSubject: null, elapsedSeconds: 0, startTime: null })
+    setState({
+      status: 'idle',
+      selectedSubject: null,
+      startTime: null,
+      timingStart: null,
+      accruedMs: 0
+    })
   }, [])
 
-  const hours = Math.floor(state.elapsedSeconds / 3600)
-  const minutes = Math.floor((state.elapsedSeconds % 3600) / 60)
-  const seconds = state.elapsedSeconds % 60
+  const elapsedMs = computeElapsed(state)
+  const totalSeconds = Math.floor(elapsedMs / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
   const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 
   return {
     status: state.status,
     selectedSubject: state.selectedSubject,
-    elapsedSeconds: state.elapsedSeconds,
+    elapsedSeconds: totalSeconds,
     formattedTime,
     selectSubject,
     start,

@@ -72,6 +72,23 @@ async function migrateRecords(): Promise<void> {
   }
 }
 
+export async function backupAllRecords(): Promise<void> {
+  try {
+    const all = await getAllRecords()
+    localStorage.setItem('homework-backup', JSON.stringify(all))
+    localStorage.setItem('homework-backup-at', new Date().toISOString())
+  } catch (e) {
+    console.warn('[DB] Backup failed', e)
+  }
+}
+
+export async function restoreFromBackup(): Promise<number> {
+  const raw = localStorage.getItem('homework-backup')
+  if (!raw) throw new Error('没有找到备份数据')
+  const records: HomeworkRecord[] = JSON.parse(raw)
+  return (await importRecords(records)).imported
+}
+
 export async function addRecord(record: HomeworkRecord): Promise<void> {
   const db = await getDb()
   await db.add(STORE_NAME, record)

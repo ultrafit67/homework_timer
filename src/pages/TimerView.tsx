@@ -33,8 +33,10 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [users, setUsers] = useState<string[]>(() => loadUserNames())
   const [manualUserIdx, setManualUserIdx] = useState<number>(0)
   const [manualSubject, setManualSubject] = useState<Subject | null>(null)
+  const [manualMode, setManualMode] = useState<'exact' | 'quick'>('exact')
   const [manualStart, setManualStart] = useState('')
   const [manualEnd, setManualEnd] = useState('')
+  const [manualMinutes, setManualMinutes] = useState(30)
   const [error, setError] = useState<string | null>(null)
 
   const handleUserConfigChange = () => {
@@ -55,23 +57,41 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
       setError('请选择科目')
       return
     }
-    if (!manualStart || !manualEnd) {
-      setError('请设置开始和结束时间')
-      return
+    let startISO: string
+    let endISO: string
+    let durationSeconds: number
+
+    if (manualMode === 'quick') {
+      if (!manualMinutes || manualMinutes < 1) {
+        setError('请输入有效分钟数')
+        return
+      }
+      const now = new Date()
+      const start = new Date(now.getTime() - manualMinutes * 60000)
+      startISO = start.toISOString()
+      endISO = now.toISOString()
+      durationSeconds = manualMinutes * 60
+    } else {
+      if (!manualStart || !manualEnd) {
+        setError('请设置开始和结束时间')
+        return
+      }
+      if (new Date(manualEnd) <= new Date(manualStart)) {
+        setError('结束时间必须晚于开始时间')
+        return
+      }
+      startISO = toISOFromLocal(manualStart)
+      endISO = toISOFromLocal(manualEnd)
+      durationSeconds = calcDurationSeconds(startISO, endISO)
     }
-    if (new Date(manualEnd) <= new Date(manualStart)) {
-      setError('结束时间必须晚于开始时间')
-      return
-    }
+
     try {
-      const startISO = toISOFromLocal(manualStart)
-      const endISO = toISOFromLocal(manualEnd)
       const record = {
         id: generateId(),
         subject: manualSubject,
         startTime: startISO,
         endTime: endISO,
-        durationSeconds: calcDurationSeconds(startISO, endISO),
+        durationSeconds,
         date: getTodayDate(),
         user: users[manualUserIdx]
       }
@@ -167,31 +187,57 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             </div>
           </div>
 
-          <div className="manual-form__time-row">
-            <div className="manual-form__field">
-              <label className="manual-form__label">开始时间</label>
-              <input
-                type="datetime-local"
-                className="manual-form__input"
-                value={manualStart}
-                onChange={e => setManualStart(e.target.value)}
-              />
-            </div>
-            <div className="manual-form__field">
-              <label className="manual-form__label">结束时间</label>
-              <input
-                type="datetime-local"
-                className="manual-form__input"
-                value={manualEnd}
-                onChange={e => setManualEnd(e.target.value)}
-              />
-              {manualStart && manualEnd && new Date(manualEnd) > new Date(manualStart) && (
-                <div className="manual-form__hint">
-                  时长：{formatDuration(calcDurationSeconds(toISOFromLocal(manualStart), toISOFromLocal(manualEnd)))}
-                </div>
-              )}
-            </div>
+          <div className="manual-form__mode-toggle">
+            <button
+              className={`manual-form__mode-btn ${manualMode === 'exact' ? 'manual-form__mode-btn--active' : ''}`}
+              onClick={() => setManualMode('exact')}
+            >精确时间</button>
+            <button
+              className={`manual-form__mode-btn ${manualMode === 'quick' ? 'manual-form__mode-btn--active' : ''}`}
+              onClick={() => setManualMode('quick')}
+            >快速录入</button>
           </div>
+
+          {manualMode === 'exact' ? (
+            <div className="manual-form__time-row">
+              <div className="manual-form__field">
+                <label className="manual-form__label">开始时间</label>
+                <input
+                  type="datetime-local"
+                  className="manual-form__input"
+                  value={manualStart}
+                  onChange={e => setManualStart(e.target.value)}
+                />
+              </div>
+              <div className="manual-form__field">
+                <label className="manual-form__label">结束时间</label>
+                <input
+                  type="datetime-local"
+                  className="manual-form__input"
+                  value={manualEnd}
+                  onChange={e => setManualEnd(e.target.value)}
+                />
+                {manualStart && manualEnd && new Date(manualEnd) > new Date(manualStart) && (
+                  <div className="manual-form__hint">
+                    时长：{formatDuration(calcDurationSeconds(toISOFromLocal(manualStart), toISOFromLocal(manualEnd)))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="manual-form__field">
+              <label className="manual-form__label">时长（分钟）</label>
+              <input
+                type="number"
+                className="manual-form__input"
+                min={1}
+                max={1440}
+                value={manualMinutes}
+                onChange={e => setManualMinutes(Math.max(1, parseInt(e.target.value) || 0))}
+              />
+              <div className="manual-form__hint">以当前时间为结束时间，向前推算</div>
+            </div>
+          )}
 
           {error && <div className="manual-form__error">{error}</div>}
 

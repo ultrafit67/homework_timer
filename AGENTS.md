@@ -17,7 +17,6 @@ src/
     TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade)
     SubjectButton, TimerDisplay, ConfirmDialog
     RecordItem, EditRecordDialog
-    TotalTimeCard, RankingItem
   pages/           — TimerView, StatsView, RecordsView (tab content)
   App.tsx          — BrowserRouter + Routes + BottomNav
   styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
@@ -29,6 +28,7 @@ src/
 - **React 19 Strict Mode double-invokes state updaters.** `useTimer.complete()` reads from a `stateRef` (not closure state) to avoid the double-invoke bug where `setState` updater callbacks execute twice.
 - **`crypto.randomUUID()` fallback.** `generateId()` in `utils.ts` falls back to `Date.now() + Math.random()` if `crypto.randomUUID` is unavailable.
 - **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
+- **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 
 ## Multi-user features
 
@@ -53,6 +53,13 @@ src/
   - 9: +化学
 - `getSubjectsForGrade(grade)` in `types.ts`, `loadGrade(userIndex)/saveGrade(userIndex)` in `utils.ts`.
 - Manual record form also filters subjects by selected user's grade.
+
+## Additional features
+
+- **CSS bar charts** in Stats page: daily subject breakdown + weekly per-day totals, pure CSS (no chart library)
+- **Manual form quick entry**: toggle between exact datetime input and minutes-based quick entry (auto-calculates start from current time)
+- **Date range filter** on Records page: filter records by date range with start/end date pickers
+- **Auto-backup**: each record addition triggers a full backup to localStorage (`homework-backup`); restore button on Records page
 
 ## Timer state machine (`useTimer.ts`)
 
@@ -86,7 +93,7 @@ src/
 
 - Store: `homework-timer.records` (keyPath: `id`)
 - Indexes: `date`, `subject`, `startTime`, `user` (added in v3)
-- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`
+- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`, `backupAllRecords`, `restoreFromBackup`
 - Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
 
 ## Routes

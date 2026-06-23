@@ -14,6 +14,8 @@ export function RecordsView() {
   const [editingRecord, setEditingRecord] = useState<HomeworkRecord | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   const handleExport = async () => {
     try {
@@ -59,11 +61,29 @@ export function RecordsView() {
     e.target.value = ''
   }
 
+  const handleRestore = async () => {
+    setImportMsg(null)
+    try {
+      const count = await db.restoreFromBackup()
+      await refresh()
+      setImportMsg(`已从备份恢复 ${count} 条记录`)
+    } catch (e) {
+      setImportMsg('恢复失败：' + ((e as Error).message || '读取备份出错'))
+      console.error('恢复备份失败', e)
+    }
+  }
+
   if (loading) {
     return <div className="page"><p className="loading-text">加载中...</p></div>
   }
 
-  const sortedRecords = [...records].sort(
+  const dateFilteredRecords = records.filter(r => {
+    if (dateFrom && r.date < dateFrom) return false
+    if (dateTo && r.date > dateTo) return false
+    return true
+  })
+
+  const sortedRecords = [...dateFilteredRecords].sort(
     (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
   )
 
@@ -115,6 +135,15 @@ export function RecordsView() {
         ))}
       </div>
 
+      <div className="date-range">
+        <input type="date" className="date-range__input" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0) }} />
+        <span className="date-range__sep">~</span>
+        <input type="date" className="date-range__input" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0) }} />
+        {(dateFrom || dateTo) && (
+          <button className="date-range__clear" onClick={() => { setDateFrom(''); setDateTo(''); setPage(0) }}>清除</button>
+        )}
+      </div>
+
       {pageRecords.length === 0 ? (
         <p className="empty-text">暂无记录</p>
       ) : (
@@ -161,13 +190,8 @@ export function RecordsView() {
       <div className="data-io">
         <button className="btn btn--text" onClick={handleExport}>导出数据</button>
         <button className="btn btn--text" onClick={() => fileInputRef.current?.click()}>导入数据</button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json"
-          style={{ display: 'none' }}
-          onChange={handleImport}
-        />
+        <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
+        <button className="btn btn--text" onClick={handleRestore}>从备份恢复</button>
         {importMsg && <p className="data-io__msg">{importMsg}</p>}
       </div>
     </div>

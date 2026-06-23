@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { HomeworkRecord, Subject, TimeStats } from '../types'
 import * as db from '../db'
-import { computeStats, getTodayDate, getWeekStart, getWeekId, loadUserNames } from '../utils'
+import { computeStats, getTodayDate, getWeekStart, getWeekId, loadUserNames, formatDate } from '../utils'
+
+interface DayTotal {
+  date: string
+  label: string
+  totalSeconds: number
+}
 
 interface UseRecordsReturn {
   records: HomeworkRecord[]
@@ -10,6 +16,7 @@ interface UseRecordsReturn {
   weeklyStats: TimeStats[]
   dailyTotal: number
   weeklyTotal: number
+  weeklyDayTotals: DayTotal[]
   weeklyTotals: { weekId: string; totalSeconds: number }[]
   refresh: () => Promise<void>
   deleteRecord: (id: string) => Promise<void>
@@ -79,6 +86,20 @@ export function useRecords(): UseRecordsReturn {
       return bYear - aYear || bWeek - aWeek
     })
 
+  const dayLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+  const weekStartDate = getWeekStart(today)
+  const weeklyDayTotals: DayTotal[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStartDate)
+    d.setDate(d.getDate() + i)
+    const dateStr = formatDate(d)
+    const dayRecords = weekRecords.filter(r => r.date === dateStr)
+    return {
+      date: dateStr,
+      label: dayLabels[i],
+      totalSeconds: dayRecords.reduce((s, r) => s + r.durationSeconds, 0)
+    }
+  })
+
   const filteredRecords = subjectFilter
     ? baseRecords.filter(r => r.subject === subjectFilter)
     : baseRecords
@@ -90,6 +111,7 @@ export function useRecords(): UseRecordsReturn {
     weeklyStats,
     dailyTotal,
     weeklyTotal,
+    weeklyDayTotals,
     weeklyTotals,
     refresh,
     deleteRecord: handleDelete,
