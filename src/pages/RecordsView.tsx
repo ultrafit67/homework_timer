@@ -80,6 +80,12 @@ export function RecordsView() {
       <h2 className="page__title">记录</h2>
 
       <div className="user-tabs">
+        <button
+          className={`user-tabs__tab ${userFilter === null ? 'user-tabs__tab--active' : ''}`}
+          onClick={() => { filterByUser(null); setPage(0) }}
+        >
+          全部
+        </button>
         {loadUserNames().map(u => (
           <button
             key={u}
