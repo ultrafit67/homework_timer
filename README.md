@@ -2,7 +2,7 @@
 
 双用户作业计时 PWA，支持老大/老二各自计时、按年级筛选科目、统计和记录管理。
 
-> ⚠️ **本仓库代码全部由 AI 助手 [OpenCode](https://github.com/opencode-ai/opencode) 生成。**
+> ⚠️ **本仓库代码全部由 AI 助手 [OpenCode](https://github.com/anomalyco/opencode) 生成。**
 > 从项目初始化、功能实现到 bug 修复，所有提交均通过 AI 对话完成，未手动编写代码。
 
 ## 功能
