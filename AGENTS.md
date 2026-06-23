@@ -1,21 +1,25 @@
 # AGENTS.md - homework_app
 
-A PWA homework timer: 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI.
+A PWA homework timer for 2 users (刘梦珊, 刘梦苒): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI.
 
 ## Architecture
 
 ```
 src/
-  types.ts         — Subject union, HomeworkRecord interface, TimeStats
-  utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats
-  db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration)
+  types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade
+  utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats, loadGrade, saveGrade
+  db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
   hooks/
-    useTimer.ts    — Timer state machine (idle → subjectSelected → timing)
-    useRecords.ts  — CRUD + computed stats, shared across Stats/Records views
-  components/      — Stateless presentational components
+    useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
+    useRecords.ts  — CRUD + computed stats + user/subject filter
+  components/
+    TimerPanel.tsx — Single-user timer panel (header + grade picker + subject grid + buttons)
+    SubjectButton, TimerDisplay, ConfirmDialog
+    RecordItem, EditRecordDialog
+    TotalTimeCard, RankingItem
   pages/           — TimerView, StatsView, RecordsView (tab content)
   App.tsx          — BrowserRouter + Routes + BottomNav
-  styles.css       — Single CSS file, mobile-first (max-width 480px)
+  styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
 ```
 
 ## Critical gotchas
@@ -23,6 +27,50 @@ src/
 - **`idb` v8 upgrade callback must NOT be async.** `openDB` resolves on `onsuccess` immediately after `onupgradeneeded` returns — it does NOT wait for async operations inside the callback. DB migrations must be done lazily after `getDb()` resolves (see `db.ts:migrateRecords()`).
 - **React 19 Strict Mode double-invokes state updaters.** `useTimer.complete()` reads from a `stateRef` (not closure state) to avoid the double-invoke bug where `setState` updater callbacks execute twice.
 - **`crypto.randomUUID()` fallback.** `generateId()` in `utils.ts` falls back to `Date.now() + Math.random()` if `crypto.randomUUID` is unavailable.
+- **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
+
+## Multi-user features
+
+- Two fixed users: `USERS = ['刘梦珊', '刘梦苒']` in `types.ts`.
+- `HomeworkRecord.user` (string) stores which user the record belongs to. Required field.
+- `useTimer(userName)` accepts userName, `complete()` returns record with that user.
+- `useRecords` defaults `userFilter` to `USERS[0]`. Stats/Records pages show user tab bar (no "全部").
+- Data migration (v2→v3) runs lazily in `migrateRecords()`: assigns `USERS[0]` to existing records with no `user` field.
+
+## Grade-based subject filtering
+
+- Click user name on timer page → grade picker dialog (1-9 + 全部).
+- Grade saved to localStorage (`homework-grade-{userName}`).
+- Subjects shown per grade (cumulative):
+  - 1-2: 语文, 数学
+  - 3-5: +英语
+  - 6: +道法
+  - 7: +历史
+  - 8: +物理
+  - 9: +化学
+- `getSubjectsForGrade(grade)` in `types.ts`, `loadGrade()/saveGrade()` in `utils.ts`.
+- Manual record form also filters subjects by selected user's grade.
+
+## Timer state machine (`useTimer.ts`)
+
+| Status | Meaning | Buttons shown |
+|---|---|---|
+| `idle` | No subject selected | (none) |
+| `subjectSelected` | Subject chosen, not started | 开始 |
+| `timing` | Timer running | 暂停 + 完成 |
+| `paused` | Timer paused | 继续 + 完成 |
+
+- `timer.complete()` returns a `HomeworkRecord` (without saving — caller handles `addRecord`).
+- `timer.pause()`, `timer.resume()` toggle the paused state.
+- Timer display shows pulsing animation when paused.
+
+## Compact layout (timer page)
+
+- Two `TimerPanel` stacked vertically with a divider.
+- User name + timer display in same flex row (两端对齐).
+- Subject buttons: fixed 44px height, 16px font, 6px gap.
+- Timer font: 32px in panel header, 56px standalone.
+- Panel padding: 8px vertical.
 
 ## Commands
 
@@ -30,25 +78,13 @@ src/
 - `npm run build` — `tsc -b && vite build` (both typecheck and bundle). **Run this, not `tsc` alone.**
 - `npm run preview` — Vite preview of built output
 - No lint, test, or format commands configured.
-- `node_modules` only in `.gitignore` — no `.env`, no build artifacts committed.
 
-## TypeScript
+## DB schema (IndexedDB v3)
 
-- `strict: true`, `noUnusedLocals`, `noUnusedParameters` enforced. Any unused import or variable causes build failure.
-- `moduleResolution: "bundler"`, `isolatedModules: true` — single-file compilation, no const enum exports.
-
-## Styling
-
-- Single `styles.css`, BEM naming (`.block__element--modifier`), CSS custom properties for theme.
-- Viewport locked: `user-scalable=no`, `max-scale=1.0` — mobile-only.
-- Layout: `.app` flex column, 480px max-width centered, bottom nav 60px.
-
-## Data layer
-
-- IndexedDB store: `homework-timer.records` with indexes on `date`, `subject`, `startTime`. Version 2.
-- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `getDateGroups`.
-- All functions are async, use `getDb()` singleton (lazy init, cached).
-- Subject name migration (v1→v2: 语→语文, 数→数学, 外→英语) runs lazily on first `getAllRecords()` call, not in the upgrade callback.
+- Store: `homework-timer.records` (keyPath: `id`)
+- Indexes: `date`, `subject`, `startTime`, `user` (added in v3)
+- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`
+- Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
 
 ## Routes
 
@@ -71,6 +107,13 @@ src/
 - **Vercel**: `npx vercel deploy dist/ --prod` — 当前环境无直连 HTTPS 能力，需通过 SOCKS5 代理（方法同上）。
 - **手机访问**: 开发模式 `npm run dev` 直接局域网访问 `http://<电脑IP>:5173` 即可。
 
+## GitHub
+
+- add ssh keys in https://github.com/settings/keys
+- git remote set-url origin git@github.com:ultrafit67/homework_app.git
+- git pull origin main
+- git push -u origin main
+
 ## Known constraints
 
 - No tests exist. No testing framework installed (Playwright in devDeps but not configured).
@@ -78,3 +121,4 @@ src/
 - Timer uses `setInterval` (1s tick) — not `requestAnimationFrame`. Elapsed time is approximate, not frame-accurate.
 - Record `startTime`/`endTime` are ISO 8601 UTC strings. `formatTime()` converts to local time for display.
 - Manual record form uses `datetime-local` inputs, converted to ISO strings via `new Date(localStr).toISOString()`.
+- Surge deployment blocked (API server `surge.surge.sh:443` unreachable).
