@@ -8,6 +8,20 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>作业计时器</title>
+    <script>
+      // Unregister stale SW so the next page load gets fresh content
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function (a) {
+          for (var i = 0; i < a.length; i++) a[i].unregister()
+        })
+      }
+      // Convert real path to hash before React loads — prevents old
+      // BrowserRouter (cached by SW) from redirecting to root.
+      if (location.pathname.startsWith('/homework_timer/') && !location.hash) {
+        var route = location.pathname.slice('/homework_timer/'.length - 1) || '/'
+        history.replaceState(null, '', '/homework_timer/#' + route)
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
