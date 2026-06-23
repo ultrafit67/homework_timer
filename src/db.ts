@@ -110,13 +110,25 @@ export async function updateRecord(record: HomeworkRecord): Promise<void> {
   await db.put(STORE_NAME, record)
 }
 
-export async function importRecords(records: HomeworkRecord[]): Promise<void> {
+export async function importRecords(records: HomeworkRecord[]): Promise<{ imported: number; skipped: number }> {
   const db = await getDb()
   const tx = db.transaction(STORE_NAME, 'readwrite')
+  const store = tx.objectStore(STORE_NAME)
+  const existingIds = new Set(await store.getAllKeys() as string[])
+
+  let imported = 0
+  let skipped = 0
   for (const r of records) {
-    await tx.store.put(r)
+    if (existingIds.has(r.id)) {
+      skipped++
+      continue
+    }
+    await store.put(r)
+    existingIds.add(r.id)
+    imported++
   }
   await tx.done
+  return { imported, skipped }
 }
 
 export async function getDateGroups(): Promise<string[]> {

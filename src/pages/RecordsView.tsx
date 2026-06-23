@@ -43,9 +43,13 @@ export function RecordsView() {
       const text = await file.text()
       const data = JSON.parse(text)
       if (!Array.isArray(data)) throw new Error('格式错误')
-      await db.importRecords(data)
+      const result = await db.importRecords(data)
       await refresh()
-      setImportMsg(`成功导入 ${data.length} 条记录`)
+      if (result.skipped > 0) {
+        setImportMsg(`成功导入 ${result.imported} 条，跳过 ${result.skipped} 条重复记录`)
+      } else {
+        setImportMsg(`成功导入 ${result.imported} 条记录`)
+      }
     } catch (e) {
       setImportMsg('导入失败：文件格式不正确')
       console.error('导入失败', e)
