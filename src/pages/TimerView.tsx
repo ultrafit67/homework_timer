@@ -121,8 +121,9 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
     setError(null)
   }
 
-  const canStart = timer.status === 'subjectSelected'
-  const isRunning = timer.status === 'timing'
+  const isTiming = timer.status === 'timing'
+  const isPaused = timer.status === 'paused'
+  const isRunning = isTiming || isPaused
 
   const getConfirmMessage = () => {
     if (!timer.selectedSubject) return ''
@@ -147,24 +148,48 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             ))}
           </div>
 
-          <TimerDisplay time={timer.formattedTime} isRunning={isRunning} />
+          <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
 
           <div className="action-buttons">
-            {!isRunning ? (
+            {timer.status === 'subjectSelected' && (
               <button
-                className={`btn btn--primary btn--large ${!canStart ? 'btn--disabled' : ''}`}
+                className="btn btn--primary btn--large"
                 onClick={handleStart}
-                disabled={!canStart}
               >
                 开始
               </button>
-            ) : (
-              <button
-                className="btn btn--danger btn--large"
-                onClick={handleComplete}
-              >
-                完成
-              </button>
+            )}
+            {isTiming && (
+              <div className="action-buttons__row">
+                <button
+                  className="btn btn--secondary btn--large action-buttons__half"
+                  onClick={timer.pause}
+                >
+                  暂停
+                </button>
+                <button
+                  className="btn btn--danger btn--large action-buttons__half"
+                  onClick={handleComplete}
+                >
+                  完成
+                </button>
+              </div>
+            )}
+            {isPaused && (
+              <div className="action-buttons__row">
+                <button
+                  className="btn btn--primary btn--large action-buttons__half"
+                  onClick={timer.resume}
+                >
+                  继续
+                </button>
+                <button
+                  className="btn btn--danger btn--large action-buttons__half"
+                  onClick={handleComplete}
+                >
+                  完成
+                </button>
+              </div>
             )}
           </div>
 

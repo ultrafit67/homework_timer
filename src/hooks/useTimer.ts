@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Subject } from '../types'
 import { generateId, getTodayDate } from '../utils'
 
-export type TimerStatus = 'idle' | 'subjectSelected' | 'timing'
+export type TimerStatus = 'idle' | 'subjectSelected' | 'timing' | 'paused'
 
 interface TimerState {
   status: TimerStatus
@@ -18,6 +18,8 @@ interface UseTimerReturn {
   formattedTime: string
   selectSubject: (subject: Subject) => void
   start: () => void
+  pause: () => void
+  resume: () => void
   complete: () => { id: string; subject: Subject; startTime: string; endTime: string; durationSeconds: number; date: string } | null
   reset: () => void
 }
@@ -39,6 +41,12 @@ export function useTimer(): UseTimerReturn {
       intervalRef.current = window.setInterval(() => {
         setState(prev => ({ ...prev, elapsedSeconds: prev.elapsedSeconds + 1 }))
       }, 1000)
+    }
+    if (state.status === 'paused') {
+      if (intervalRef.current !== null) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
     return () => {
       if (intervalRef.current !== null) {
@@ -65,6 +73,24 @@ export function useTimer(): UseTimerReturn {
       if (prev.status === 'subjectSelected' && prev.selectedSubject) {
         const now = new Date().toISOString()
         return { ...prev, status: 'timing', elapsedSeconds: 0, startTime: now }
+      }
+      return prev
+    })
+  }, [])
+
+  const pause = useCallback(() => {
+    setState(prev => {
+      if (prev.status === 'timing') {
+        return { ...prev, status: 'paused' }
+      }
+      return prev
+    })
+  }, [])
+
+  const resume = useCallback(() => {
+    setState(prev => {
+      if (prev.status === 'paused') {
+        return { ...prev, status: 'timing' }
       }
       return prev
     })
@@ -104,6 +130,8 @@ export function useTimer(): UseTimerReturn {
     formattedTime,
     selectSubject,
     start,
+    pause,
+    resume,
     complete,
     reset
   }
