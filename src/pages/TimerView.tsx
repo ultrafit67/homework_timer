@@ -1,9 +1,9 @@
-import { useState } from 'react'
-import { SUBJECTS, Subject, USERS } from '../types'
+import { useState, useMemo } from 'react'
+import { Subject, USERS, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
 import { addRecord } from '../db'
-import { generateId, getTodayDate } from '../utils'
+import { generateId, getTodayDate, loadGrade } from '../utils'
 
 interface TimerViewProps {
   onRecordAdded: () => void
@@ -35,6 +35,15 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [manualStart, setManualStart] = useState('')
   const [manualEnd, setManualEnd] = useState('')
   const [error, setError] = useState<string | null>(null)
+
+  const manualSubjects = useMemo(() => {
+    const grade = loadGrade(manualUser)
+    return getSubjectsForGrade(grade as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)
+  }, [manualUser])
+
+  if (manualSubject && !manualSubjects.includes(manualSubject)) {
+    setManualSubject(null)
+  }
 
   const handleManualSave = async () => {
     if (!manualSubject) {
@@ -130,7 +139,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
           <div className="manual-form__field">
             <label className="manual-form__label">科目</label>
             <div className="subject-grid subject-grid--small">
-              {SUBJECTS.map(s => (
+              {manualSubjects.map(s => (
                 <SubjectButton
                   key={s}
                   subject={s}

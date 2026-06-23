@@ -59,3 +59,22 @@ export function computeStats(records: HomeworkRecord[]): TimeStats[] {
     .filter(s => s.count > 0)
     .sort((a, b) => b.totalSeconds - a.totalSeconds)
 }
+
+const GRADE_STORAGE_PREFIX = 'homework-grade-'
+
+export function loadGrade(userName: string): number {
+  try {
+    const stored = localStorage.getItem(`${GRADE_STORAGE_PREFIX}${userName}`)
+    if (stored !== null) {
+      const g = parseInt(stored, 10)
+      if (g >= 0 && g <= 9) return g
+    }
+  } catch { /* localStorage unavailable */ }
+  return 0
+}
+
+export function saveGrade(userName: string, grade: number): void {
+  try {
+    localStorage.setItem(`${GRADE_STORAGE_PREFIX}${userName}`, String(grade))
+  } catch { /* localStorage unavailable */ }
+}

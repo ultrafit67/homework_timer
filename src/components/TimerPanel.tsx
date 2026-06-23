@@ -1,10 +1,11 @@
-import { useState } from 'react'
-import { SUBJECTS, Subject } from '../types'
+import { useState, useMemo } from 'react'
+import { Subject, Grade, GRADES, getSubjectsForGrade } from '../types'
 import { useTimer } from '../hooks/useTimer'
 import { SubjectButton } from './SubjectButton'
 import { TimerDisplay } from './TimerDisplay'
 import { ConfirmDialog } from './ConfirmDialog'
 import { addRecord } from '../db'
+import { loadGrade, saveGrade } from '../utils'
 
 interface TimerPanelProps {
   userName: string
@@ -14,7 +15,11 @@ interface TimerPanelProps {
 export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
   const timer = useTimer(userName)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showGradePicker, setShowGradePicker] = useState(false)
+  const [grade, setGrade] = useState<number>(() => loadGrade(userName))
   const [error, setError] = useState<string | null>(null)
+
+  const subjects = useMemo(() => getSubjectsForGrade(grade as Grade | 0), [grade])
 
   const isTiming = timer.status === 'timing'
   const isPaused = timer.status === 'paused'
@@ -46,6 +51,12 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
     timer.selectSubject(subject)
   }
 
+  const handleGradeSelect = (g: number) => {
+    setGrade(g)
+    saveGrade(userName, g)
+    setShowGradePicker(false)
+  }
+
   const confirmMessage = timer.selectedSubject
     ? `${timer.selectedSubject} 用时 ${timer.formattedTime}`
     : ''
@@ -53,14 +64,17 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
   return (
     <div className="timer-panel">
       <div className="timer-panel__header-row">
-        <span className="timer-panel__name">{userName}</span>
+        <span className="timer-panel__name" onClick={() => setShowGradePicker(true)}>
+          {userName}
+          {grade > 0 && <span className="timer-panel__grade-badge">{grade}年级</span>}
+        </span>
         <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
       </div>
 
       {error && <div className="timer-panel__error">{error}</div>}
 
       <div className="subject-grid">
-        {SUBJECTS.map(s => (
+        {subjects.map(s => (
           <SubjectButton
             key={s}
             subject={s}
@@ -106,6 +120,31 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
         onConfirm={handleConfirmComplete}
         onCancel={() => setShowConfirm(false)}
       />
+
+      {showGradePicker && (
+        <div className="dialog-overlay" onClick={() => setShowGradePicker(false)}>
+          <div className="dialog dialog--grade" onClick={e => e.stopPropagation()}>
+            <h3 className="dialog__title">选择年级</h3>
+            <div className="grade-grid">
+              <button
+                className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
+                onClick={() => handleGradeSelect(0)}
+              >
+                全部
+              </button>
+              {GRADES.map(g => (
+                <button
+                  key={g}
+                  className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
+                  onClick={() => handleGradeSelect(g)}
+                >
+                  {g}年级
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

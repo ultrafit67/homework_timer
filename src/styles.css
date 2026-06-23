@@ -142,6 +142,20 @@ body {
   font-weight: 700;
   color: var(--color-primary);
   white-space: nowrap;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timer-panel__grade-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  background: var(--color-primary);
+  padding: 1px 6px;
+  border-radius: 8px;
+  line-height: 1.4;
 }
 
 .timer-panel__header-row .timer-display {
@@ -948,6 +962,35 @@ body {
 .dialog__actions .btn--secondary {
   background: var(--color-bg);
   color: var(--color-text);
+}
+
+.dialog--grade {
+  max-width: 280px;
+}
+
+.grade-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.grade-btn {
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  padding: 12px 8px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.grade-btn--active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
 }
 
 /* Data Import/Export */
