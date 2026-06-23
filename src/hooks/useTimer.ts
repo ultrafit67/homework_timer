@@ -31,13 +31,43 @@ function computeElapsed(state: TimerState): number {
   return state.accruedMs + running
 }
 
+function getSavedState(userName: string): TimerState | null {
+  try {
+    const raw = sessionStorage.getItem(`timer-state-${userName}`)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      // Validate it's a real TimerState
+      if (parsed && typeof parsed === 'object' && 'status' in parsed) {
+        return parsed
+      }
+    }
+  } catch { /* ignore corrupt data */ }
+  return null
+}
+
+function saveState(userName: string, state: TimerState): void {
+  try {
+    sessionStorage.setItem(`timer-state-${userName}`, JSON.stringify(state))
+  } catch { /* storage full or unavailable */ }
+}
+
+function clearSavedState(userName: string): void {
+  try {
+    sessionStorage.removeItem(`timer-state-${userName}`)
+  } catch { /* ignore */ }
+}
+
+const INITIAL_STATE: TimerState = {
+  status: 'idle',
+  selectedSubject: null,
+  startTime: null,
+  timingStart: null,
+  accruedMs: 0
+}
+
 export function useTimer(userName: string): UseTimerReturn {
-  const [state, setState] = useState<TimerState>({
-    status: 'idle',
-    selectedSubject: null,
-    startTime: null,
-    timingStart: null,
-    accruedMs: 0
+  const [state, setState] = useState<TimerState>(() => {
+    return getSavedState(userName) || INITIAL_STATE
   })
   // Tick counter — only purpose is to trigger re-renders so elapsed time refreshes
   const [, setTick] = useState(0)
@@ -52,6 +82,11 @@ export function useTimer(userName: string): UseTimerReturn {
       return () => clearInterval(id)
     }
   }, [state.status])
+
+  // Persist timer state to sessionStorage — survives page refresh/reload
+  useEffect(() => {
+    saveState(userName, state)
+  }, [state, userName])
 
   const selectSubject = useCallback((subject: Subject) => {
     setState(prev => {
@@ -117,27 +152,17 @@ export function useTimer(userName: string): UseTimerReturn {
         date: getTodayDate(),
         user: userName
       }
-      setState({
-        status: 'idle',
-        selectedSubject: null,
-        startTime: null,
-        timingStart: null,
-        accruedMs: 0
-      })
+      setState(INITIAL_STATE)
+      clearSavedState(userName)
       return record
     }
     return null
   }, [userName])
 
   const reset = useCallback(() => {
-    setState({
-      status: 'idle',
-      selectedSubject: null,
-      startTime: null,
-      timingStart: null,
-      accruedMs: 0
-    })
-  }, [])
+    setState(INITIAL_STATE)
+    clearSavedState(userName)
+  }, [userName])
 
   const elapsedMs = computeElapsed(state)
   const totalSeconds = Math.floor(elapsedMs / 1000)
