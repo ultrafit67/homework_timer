@@ -742,7 +742,7 @@ body {
 
 /* Manual Entry */
 .manual-entry-section {
-  margin-top: 16px;
+  margin-top: 12px;
 }
 
 .manual-form {
@@ -750,30 +750,30 @@ body {
 }
 
 .manual-form__title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   color: var(--color-text);
 }
 
 .manual-form__field {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .manual-form__label {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .manual-form__input {
   width: 100%;
-  padding: 12px 14px;
+  padding: 8px 10px;
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  font-size: 16px;
+  border-radius: 8px;
+  font-size: 14px;
   font-family: inherit;
   color: var(--color-text);
   background: var(--color-bg);
@@ -787,29 +787,66 @@ body {
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
 }
 
+.manual-form__time-row {
+  display: flex;
+  gap: 10px;
+}
+
+.manual-form__time-row .manual-form__field {
+  flex: 1;
+}
+
 .manual-form__hint {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text-secondary);
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .manual-form__error {
   background: #FEF2F2;
   color: var(--color-danger);
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  margin-bottom: 16px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 12px;
 }
 
 .manual-form__actions {
   display: flex;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .manual-form__actions .btn {
   flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+/* Compact subject grid in manual form */
+.manual-form .subject-grid--small {
+  gap: 6px;
+}
+
+.manual-form .subject-grid--small .subject-btn {
+  height: 40px;
+  width: auto;
+  aspect-ratio: auto;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border-width: 1.5px;
+}
+
+/* Compact user tabs in manual form */
+.manual-form .user-tabs {
+  margin-bottom: 0;
+}
+
+.manual-form .user-tabs__tab {
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 .subject-grid--small .subject-btn {

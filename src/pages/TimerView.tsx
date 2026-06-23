@@ -151,29 +151,30 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             </div>
           </div>
 
-          <div className="manual-form__field">
-            <label className="manual-form__label">开始时间</label>
-            <input
-              type="datetime-local"
-              className="manual-form__input"
-              value={manualStart}
-              onChange={e => setManualStart(e.target.value)}
-            />
-          </div>
-
-          <div className="manual-form__field">
-            <label className="manual-form__label">结束时间</label>
-            <input
-              type="datetime-local"
-              className="manual-form__input"
-              value={manualEnd}
-              onChange={e => setManualEnd(e.target.value)}
-            />
-            {manualStart && manualEnd && new Date(manualEnd) > new Date(manualStart) && (
-              <div className="manual-form__hint">
-                时长：{formatDuration(calcDurationSeconds(toISOFromLocal(manualStart), toISOFromLocal(manualEnd)))}
-              </div>
-            )}
+          <div className="manual-form__time-row">
+            <div className="manual-form__field">
+              <label className="manual-form__label">开始时间</label>
+              <input
+                type="datetime-local"
+                className="manual-form__input"
+                value={manualStart}
+                onChange={e => setManualStart(e.target.value)}
+              />
+            </div>
+            <div className="manual-form__field">
+              <label className="manual-form__label">结束时间</label>
+              <input
+                type="datetime-local"
+                className="manual-form__input"
+                value={manualEnd}
+                onChange={e => setManualEnd(e.target.value)}
+              />
+              {manualStart && manualEnd && new Date(manualEnd) > new Date(manualStart) && (
+                <div className="manual-form__hint">
+                  时长：{formatDuration(calcDurationSeconds(toISOFromLocal(manualStart), toISOFromLocal(manualEnd)))}
+                </div>
+              )}
+            </div>
           </div>
 
           {error && <div className="manual-form__error">{error}</div>}
