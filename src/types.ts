@@ -8,7 +8,11 @@ export interface HomeworkRecord {
   endTime: string    // ISO 8601
   durationSeconds: number
   date: string       // YYYY-MM-DD
+  user: string       // User name, e.g. '刘梦珊' | '刘梦苒'
 }
+
+export const USERS = ['刘梦珊', '刘梦苒'] as const
+export type UserId = typeof USERS[number]
 
 export interface TimeStats {
   subject: Subject

@@ -1,9 +1,9 @@
 import { openDB, IDBPDatabase } from 'idb'
-import { HomeworkRecord, Subject } from './types'
+import { HomeworkRecord, Subject, USERS } from './types'
 
 const DB_NAME = 'homework-timer'
 const STORE_NAME = 'records'
-const DB_VERSION = 2
+const DB_VERSION = 3
 
 let dbPromise: Promise<IDBPDatabase> | null = null
 let migrated = false
@@ -17,6 +17,10 @@ function getDb(): Promise<IDBPDatabase> {
           store.createIndex('date', 'date', { unique: false })
           store.createIndex('subject', 'subject', { unique: false })
           store.createIndex('startTime', 'startTime', { unique: false })
+        }
+        if (oldVersion < 3) {
+          const store = _transaction.objectStore(STORE_NAME)
+          store.createIndex('user', 'user', { unique: false })
         }
         // v1→v2 subject name migration is done lazily in migrateRecords()
       }
@@ -43,17 +47,25 @@ async function migrateRecords(): Promise<void> {
     let changed = false
     while (cursor) {
       const record = cursor.value as HomeworkRecord
+      // Migrate old subject names (v1→v2)
       const newSubject = subjectMap[record.subject] as Subject | undefined
       if (newSubject) {
         record.subject = newSubject
-        await cursor.update(record)
         changed = true
+      }
+      // Assign default user if missing (v2→v3)
+      if (!record.user) {
+        record.user = USERS[0]
+        changed = true
+      }
+      if (changed) {
+        await cursor.update(record)
       }
       cursor = await cursor.continue()
     }
     await tx.done
     if (changed) {
-      console.log('[DB] Migrated old subject names to full names')
+      console.log('[DB] Migrated old records')
     }
   } catch (e) {
     console.warn('[DB] Migration skipped (first visit or empty DB)', e)

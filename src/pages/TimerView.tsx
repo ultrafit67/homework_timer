@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import { SUBJECTS, Subject } from '../types'
-import { useTimer } from '../hooks/useTimer'
+import { SUBJECTS, Subject, USERS } from '../types'
+import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
-import { TimerDisplay } from '../components/TimerDisplay'
-import { ConfirmDialog } from '../components/ConfirmDialog'
 import { addRecord } from '../db'
 import { generateId, getTodayDate } from '../utils'
 
@@ -31,39 +29,12 @@ function calcDurationSeconds(start: string, end: string): number {
 }
 
 export function TimerView({ onRecordAdded }: TimerViewProps) {
-  const timer = useTimer()
-  const [showConfirm, setShowConfirm] = useState(false)
   const [showManual, setShowManual] = useState(false)
+  const [manualUser, setManualUser] = useState<string>(USERS[0])
   const [manualSubject, setManualSubject] = useState<Subject | null>(null)
   const [manualStart, setManualStart] = useState('')
   const [manualEnd, setManualEnd] = useState('')
   const [error, setError] = useState<string | null>(null)
-
-  const handleSubjectClick = (subject: Subject) => {
-    timer.selectSubject(subject)
-  }
-
-  const handleStart = () => {
-    timer.start()
-  }
-
-  const handleComplete = () => {
-    setShowConfirm(true)
-  }
-
-  const handleConfirmComplete = async () => {
-    setShowConfirm(false)
-    try {
-      const record = timer.complete()
-      if (record) {
-        await addRecord(record)
-        onRecordAdded()
-      }
-    } catch (e) {
-      console.error('Failed to save record', e)
-      setError('保存失败，请重试')
-    }
-  }
 
   const handleManualSave = async () => {
     if (!manualSubject) {
@@ -87,7 +58,8 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
         startTime: startISO,
         endTime: endISO,
         durationSeconds: calcDurationSeconds(startISO, endISO),
-        date: getTodayDate()
+        date: getTodayDate(),
+        user: manualUser
       }
       await addRecord(record)
       setShowManual(false)
@@ -110,100 +82,50 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
     setError(null)
   }
 
-  // Pre-fill manual times with current time
   const handleOpenManual = () => {
     const now = new Date()
     const endStr = toLocalDatetimeString(now.toISOString())
-    const startStr = toLocalDatetimeString(new Date(now.getTime() - 1800000).toISOString()) // 30 min ago
+    const startStr = toLocalDatetimeString(new Date(now.getTime() - 1800000).toISOString())
     setManualStart(startStr)
     setManualEnd(endStr)
     setShowManual(true)
     setError(null)
   }
 
-  const isTiming = timer.status === 'timing'
-  const isPaused = timer.status === 'paused'
-  const isRunning = isTiming || isPaused
-
-  const getConfirmMessage = () => {
-    if (!timer.selectedSubject) return ''
-    return `${timer.selectedSubject} 用时 ${timer.formattedTime}`
-  }
-
   return (
     <div className="page timer-page">
-      <h2 className="page__title">选择科目</h2>
-
       {!showManual ? (
         <>
-          <div className="subject-grid">
-            {SUBJECTS.map(s => (
-              <SubjectButton
-                key={s}
-                subject={s}
-                selected={timer.selectedSubject === s}
-                disabled={isRunning}
-                onClick={handleSubjectClick}
-              />
-            ))}
+          <div className="timer-panels">
+            <TimerPanel userName={USERS[0]} onRecordAdded={onRecordAdded} />
+            <div className="timer-panels__divider" />
+            <TimerPanel userName={USERS[1]} onRecordAdded={onRecordAdded} />
           </div>
 
-          <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
-
-          <div className="action-buttons">
-            {timer.status === 'subjectSelected' && (
-              <button
-                className="btn btn--primary btn--large"
-                onClick={handleStart}
-              >
-                开始
-              </button>
-            )}
-            {isTiming && (
-              <div className="action-buttons__row">
-                <button
-                  className="btn btn--secondary btn--large action-buttons__half"
-                  onClick={timer.pause}
-                >
-                  暂停
-                </button>
-                <button
-                  className="btn btn--danger btn--large action-buttons__half"
-                  onClick={handleComplete}
-                >
-                  完成
-                </button>
-              </div>
-            )}
-            {isPaused && (
-              <div className="action-buttons__row">
-                <button
-                  className="btn btn--primary btn--large action-buttons__half"
-                  onClick={timer.resume}
-                >
-                  继续
-                </button>
-                <button
-                  className="btn btn--danger btn--large action-buttons__half"
-                  onClick={handleComplete}
-                >
-                  完成
-                </button>
-              </div>
-            )}
+          <div className="manual-entry-section">
+            <button className="btn btn--text btn--center" onClick={handleOpenManual}>
+              手动记录
+            </button>
           </div>
-
-          {!isRunning && (
-            <div className="manual-entry-section">
-              <button className="btn btn--text btn--center" onClick={handleOpenManual}>
-                手动记录
-              </button>
-            </div>
-          )}
         </>
       ) : (
         <div className="manual-form">
           <h3 className="manual-form__title">手动记录</h3>
+
+          <div className="manual-form__field">
+            <label className="manual-form__label">用户</label>
+            <div className="user-tabs">
+              {USERS.map(u => (
+                <button
+                  key={u}
+                  className={`user-tabs__tab ${manualUser === u ? 'user-tabs__tab--active' : ''}`}
+                  onClick={() => setManualUser(u)}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="manual-form__field">
             <label className="manual-form__label">科目</label>
@@ -257,14 +179,6 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
           </div>
         </div>
       )}
-
-      <ConfirmDialog
-        open={showConfirm}
-        title="确认完成"
-        message={getConfirmMessage()}
-        onConfirm={handleConfirmComplete}
-        onCancel={() => setShowConfirm(false)}
-      />
     </div>
   )
 }

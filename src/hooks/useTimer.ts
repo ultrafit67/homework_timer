@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Subject } from '../types'
+import { Subject, HomeworkRecord } from '../types'
 import { generateId, getTodayDate } from '../utils'
 
 export type TimerStatus = 'idle' | 'subjectSelected' | 'timing' | 'paused'
@@ -20,11 +20,11 @@ interface UseTimerReturn {
   start: () => void
   pause: () => void
   resume: () => void
-  complete: () => { id: string; subject: Subject; startTime: string; endTime: string; durationSeconds: number; date: string } | null
+  complete: () => Omit<HomeworkRecord, 'user'> & { user: string } | null
   reset: () => void
 }
 
-export function useTimer(): UseTimerReturn {
+export function useTimer(userName: string): UseTimerReturn {
   const [state, setState] = useState<TimerState>({
     status: 'idle',
     selectedSubject: null,
@@ -106,13 +106,14 @@ export function useTimer(): UseTimerReturn {
         startTime: s.startTime,
         endTime: now,
         durationSeconds: s.elapsedSeconds,
-        date: getTodayDate()
+        date: getTodayDate(),
+        user: userName
       }
       setState({ status: 'idle', selectedSubject: null, elapsedSeconds: 0, startTime: null })
       return record
     }
     return null
-  }, [])
+  }, [userName])
 
   const reset = useCallback(() => {
     setState({ status: 'idle', selectedSubject: null, elapsedSeconds: 0, startTime: null })
