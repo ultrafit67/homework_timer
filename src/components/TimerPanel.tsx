@@ -71,8 +71,6 @@ export function TimerPanel({ userName, onRecordAdded }: TimerPanelProps) {
         ))}
       </div>
 
-      <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
-
       <div className="action-buttons">
         {timer.status === 'subjectSelected' && (
           <button className="btn btn--primary btn--large" onClick={handleStart}>
