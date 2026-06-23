@@ -1,19 +1,49 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { BottomNav } from './components/BottomNav'
 import { TimerView } from './pages/TimerView'
 import { StatsView } from './pages/StatsView'
 import { RecordsView } from './pages/RecordsView'
+import { SyncSettings } from './components/SyncSettings'
 import { useRecords } from './hooks/useRecords'
 import { backupAllRecords } from './db'
+import { HomeworkRecord } from './types'
+import { isSyncEnabled, startSync, stopSync, getStatus, setStatusCallback, syncPushRecord } from './sync'
+
+const SYNC_DOT_COLORS: Record<string, string> = {
+  closed: '#9CA3AF',
+  'no-env-id': '#F59E0B',
+  connecting: '#3B82F6',
+  syncing: '#3B82F6',
+  synced: '#10B981',
+  error: '#EF4444'
+}
 
 function AppContent() {
   const { refresh } = useRecords()
+  const [showSync, setShowSync] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(() => getStatus())
 
-  const onRecordAdded = useCallback(async () => {
+  useEffect(() => {
+    if (isSyncEnabled()) {
+      startSync().catch(() => {})
+    }
+    setStatusCallback(setSyncStatus)
+    return () => {
+      stopSync().catch(() => {})
+      setStatusCallback(null)
+    }
+  }, [])
+
+  const onRecordAdded = useCallback(async (record?: HomeworkRecord) => {
     await refresh()
     backupAllRecords().catch(e => console.warn('Auto-backup failed', e))
+    if (record && isSyncEnabled()) {
+      syncPushRecord(record).catch(e => console.warn('Sync push failed', e))
+    }
   }, [refresh])
+
+  const syncColor = SYNC_DOT_COLORS[syncStatus] || '#9CA3AF'
 
   return (
     <div className="app">
@@ -26,6 +56,21 @@ function AppContent() {
         </Routes>
       </div>
       <BottomNav />
+      <button className="sync-indicator" onClick={() => setShowSync(true)} title={`同步状态: ${syncStatus}`}>
+        <span className="sync-indicator__dot" style={{ background: syncColor }} />
+        <span className="sync-indicator__label">同步</span>
+      </button>
+
+      {showSync && (
+        <div className="dialog-overlay" onClick={() => setShowSync(false)}>
+          <div className="dialog dialog--sync" onClick={e => e.stopPropagation()}>
+            <SyncSettings />
+            <div className="dialog__actions">
+              <button className="btn btn--secondary btn--large" onClick={() => setShowSync(false)}>关闭</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cloudbase/js-sdk": "^3.5.1",
     "idb": "^8.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

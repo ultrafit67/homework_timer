@@ -1,24 +1,26 @@
 # AGENTS.md - homework_app
 
-A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI.
+A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI. Optional cloud sync via 腾讯云 CloudBase.
 
 ## Architecture
 
 ```
 src/
-  types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade
+  types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade, SUBJECT_COLORS, SUBJECT_ICONS
   utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats,
                      loadGrade, saveGrade, loadUserNames, saveUserName
   db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
+  cloudbase.ts     — CloudBase JS SDK init + anonymous auth + stop
+  sync.ts          — Cloud sync service (push/pull/polling/pending queue)
   hooks/
     useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
     useRecords.ts  — CRUD + computed stats + user/subject filter
   components/
     TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade)
     SubjectButton, TimerDisplay, ConfirmDialog
-    RecordItem, EditRecordDialog
+    RecordItem, EditRecordDialog, SyncSettings
   pages/           — TimerView, StatsView, RecordsView (tab content)
-  App.tsx          — BrowserRouter + Routes + BottomNav
+  App.tsx          — BrowserRouter + Routes + BottomNav + sync init + status indicator
   styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
 ```
 
@@ -28,6 +30,7 @@ src/
 - **React 19 Strict Mode double-invokes state updaters.** `useTimer.complete()` reads from a `stateRef` (not closure state) to avoid the double-invoke bug where `setState` updater callbacks execute twice.
 - **`crypto.randomUUID()` fallback.** `generateId()` in `utils.ts` falls back to `Date.now() + Math.random()` if `crypto.randomUUID` is unavailable.
 - **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
+- **@cloudbase/js-sdk is bundled inline.** There is no `@cloudbase` entry in `tsconfig.json` paths — SDK is resolved directly from `node_modules` at build time. The bundle size warning (~1MB JS) is expected.
 - **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 
 ## Multi-user features
@@ -57,9 +60,11 @@ src/
 ## Additional features
 
 - **CSS bar charts** in Stats page: daily subject breakdown + weekly per-day totals, pure CSS (no chart library)
+- **SVG trend chart** in Stats page: line chart showing daily/weekly duration trends per subject
 - **Manual form quick entry**: toggle between exact datetime input and minutes-based quick entry (auto-calculates start from current time)
 - **Date range filter** on Records page: filter records by date range with start/end date pickers
 - **Auto-backup**: each record addition triggers a full backup to localStorage (`homework-backup`); restore button on Records page
+- **Subject colors/icons**: `SUBJECT_COLORS` + `SUBJECT_ICONS` in types.ts, applied to buttons, records, stats bars, and trend chart
 
 ## Timer state machine (`useTimer.ts`)
 
@@ -93,8 +98,26 @@ src/
 
 - Store: `homework-timer.records` (keyPath: `id`)
 - Indexes: `date`, `subject`, `startTime`, `user` (added in v3)
-- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`, `backupAllRecords`, `restoreFromBackup`
+- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`, `backupAllRecords`, `restoreFromBackup`, `getAllRecordsForSync`, `hardDeleteRecord`, `upsertRecords`
 - Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
+- Soft delete: `deleteRecord()` sets `deleted: true` instead of removing; `getAllRecords()` filters out deleted; `getAllRecordsForSync()` returns all including deleted (for sync)
+- CloudBase collection: `homework_records`, document `_id` = record `id`
+
+## Cloud sync (optional, 腾讯云 CloudBase)
+
+- Opt-in via settings toggle + env ID input (stored in localStorage: `sync-enabled`, `sync-env-id`)
+- `cloudbase.ts`: `initCloudBase(envId)` → anonymous auth → `getDB()` for CloudBase DB ref
+- `sync.ts` exports: `startSync()`, `stopSync()`, `syncPushRecord()`, `syncDeleteRecord()`, `isSyncEnabled()`, `getEnvId()`, `setSyncEnabled()`, `setEnvId()`, `setStatusCallback()`, `getStatus()`
+- Sync flow:
+  1. `startSync()` → init CloudBase → push all local records not in cloud → pull changes since last sync → start 30s polling
+  2. On record add/update/delete → `syncPushRecord()` / `syncDeleteRecord()` attempts real-time push
+  3. If offline or CloudBase unreachable → operation queued in localStorage (`sync-pending`) → flushed on next successful cycle
+  4. `pullRemoteChanges()` fetches records with `_updatedAt > lastSync` → `upsertRecords()` in IndexedDB
+- Status lifecycle: `closed` → `no-env-id` → `connecting` → `syncing` → `synced` | `error: {msg}`
+- Status indicator: floating pill at bottom-right, color-coded dot + "同步" text, click opens SyncSettings dialog
+- `App.tsx`: `useEffect` on mount auto-starts sync if enabled; `onRecordAdded` calls `syncPushRecord`
+- `useRecords.ts`: `handleDelete` calls `syncDeleteRecord`, `handleUpdate` calls `syncPushRecord`
+- Sync indicator CSS: `.sync-indicator` positioned fixed, `bottom: calc(env(safe-area-inset-bottom) + 72px)`
 
 ## Routes
 

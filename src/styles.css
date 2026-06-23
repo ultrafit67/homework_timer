@@ -1265,3 +1265,128 @@ body {
   transform: translate(-50%, -100%);
   margin-top: -8px;
 }
+
+/* ---- Sync Settings ---- */
+
+.sync-settings {
+  padding: 16px 0;
+}
+
+.sync-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.sync-settings__label {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.sync-settings__field {
+  margin-bottom: 12px;
+}
+
+.sync-settings__status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sync-settings__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sync-settings__status-text {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.sync-settings__retry {
+  margin-left: auto;
+  font-size: 14px;
+}
+
+/* Toggle switch */
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+  cursor: pointer;
+}
+
+.toggle input {
+  display: none;
+}
+
+.toggle__slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 28px;
+  transition: background 0.2s;
+}
+
+.toggle__slider::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle input:checked + .toggle__slider {
+  background: var(--color-primary, #4F46E5);
+}
+
+.toggle input:checked + .toggle__slider::before {
+  transform: translateX(20px);
+}
+
+.sync-indicator {
+  position: fixed;
+  right: 12px;
+  bottom: calc(env(safe-area-inset-bottom) + 72px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  z-index: 50;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sync-indicator:active {
+  opacity: 0.7;
+}
+
+.sync-indicator__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sync-indicator__label {
+  line-height: 1;
+}
+
+.dialog--sync .dialog__actions {
+  margin-top: 16px;
+}

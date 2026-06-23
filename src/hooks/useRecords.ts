@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { HomeworkRecord, Subject, TimeStats } from '../types'
 import * as db from '../db'
 import { computeStats, getTodayDate, getWeekStart, getWeekId, loadUserNames, formatDate } from '../utils'
+import { isSyncEnabled, syncDeleteRecord, syncPushRecord } from '../sync'
 
 interface DayTotal {
   date: string
@@ -50,11 +51,17 @@ export function useRecords(): UseRecordsReturn {
 
   const handleDelete = useCallback(async (id: string) => {
     await db.deleteRecord(id)
+    if (isSyncEnabled()) {
+      syncDeleteRecord(id).catch(e => console.warn('Sync delete failed', e))
+    }
     await refresh()
   }, [refresh])
 
   const handleUpdate = useCallback(async (record: HomeworkRecord) => {
     await db.updateRecord(record)
+    if (isSyncEnabled()) {
+      syncPushRecord(record).catch(e => console.warn('Sync update failed', e))
+    }
     await refresh()
   }, [refresh])
 

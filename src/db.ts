@@ -114,12 +114,42 @@ export async function getRecordsInRange(startDate: string, endDate: string): Pro
 export async function getAllRecords(): Promise<HomeworkRecord[]> {
   await migrateRecords()
   const db = await getDb()
+  const all = await db.getAll(STORE_NAME)
+  // Filter out soft-deleted records for UI display
+  return all.filter(r => !r.deleted)
+}
+
+/** Get ALL records including soft-deleted ones (for sync) */
+export async function getAllRecordsForSync(): Promise<HomeworkRecord[]> {
+  await migrateRecords()
+  const db = await getDb()
   return db.getAll(STORE_NAME)
 }
 
 export async function deleteRecord(id: string): Promise<void> {
   const db = await getDb()
+  const record = await db.get(STORE_NAME, id)
+  if (record) {
+    record.deleted = true
+    await db.put(STORE_NAME, record)
+  }
+}
+
+/** Actually remove a record from IndexedDB (not soft delete) */
+export async function hardDeleteRecord(id: string): Promise<void> {
+  const db = await getDb()
   await db.delete(STORE_NAME, id)
+}
+
+/** Upsert records from sync (update if exists, insert if not) */
+export async function upsertRecords(records: HomeworkRecord[]): Promise<void> {
+  if (records.length === 0) return
+  const db = await getDb()
+  const tx = db.transaction(STORE_NAME, 'readwrite')
+  for (const record of records) {
+    await tx.store.put(record)
+  }
+  await tx.done
 }
 
 export async function updateRecord(record: HomeworkRecord): Promise<void> {

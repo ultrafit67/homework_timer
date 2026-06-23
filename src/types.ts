@@ -42,7 +42,8 @@ export interface HomeworkRecord {
   endTime: string    // ISO 8601
   durationSeconds: number
   date: string       // YYYY-MM-DD
-  user: string       // User name, e.g. '刘梦珊' | '刘梦苒'
+  user: string       // User name
+  deleted?: boolean  // soft delete flag (cloud sync)
 }
 
 export const USERS = ['老大', '老二'] as const

@@ -4,13 +4,14 @@ import { useTimer } from '../hooks/useTimer'
 import { SubjectButton } from './SubjectButton'
 import { TimerDisplay } from './TimerDisplay'
 import { ConfirmDialog } from './ConfirmDialog'
+import { HomeworkRecord } from '../types'
 import { addRecord, renameUserRecords } from '../db'
 import { loadGrade, saveGrade, saveUserName } from '../utils'
 
 interface TimerPanelProps {
   userIndex: number
   userName: string
-  onRecordAdded: () => void
+  onRecordAdded: (record?: HomeworkRecord) => void
   onUserConfigChange?: () => void
 }
 
@@ -38,7 +39,7 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
       const record = timer.complete()
       if (record) {
         await addRecord(record)
-        onRecordAdded()
+        onRecordAdded(record)
       }
     } catch (e) {
       console.error('Failed to save record', e)

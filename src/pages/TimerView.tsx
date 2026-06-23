@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react'
-import { Subject, getSubjectsForGrade } from '../types'
+import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
 import { addRecord } from '../db'
 import { generateId, getTodayDate, loadGrade, loadUserNames } from '../utils'
 
 interface TimerViewProps {
-  onRecordAdded: () => void
+  onRecordAdded: (record?: HomeworkRecord) => void
 }
 
 function toLocalDatetimeString(iso: string): string {
@@ -101,7 +101,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
       setManualStart('')
       setManualEnd('')
       setError(null)
-      onRecordAdded()
+      onRecordAdded(record)
     } catch (e) {
       console.error('Failed to save manual record', e)
       setError('保存失败，请重试')

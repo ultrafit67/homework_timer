@@ -11,9 +11,10 @@
 - **年级科目筛选** — 设置年级后只显示对应科目（1–9 年级，累计增加）
 - **用户自定义** — 名字、年级均可修改，改名自动更新历史记录
 - **手动记录** — 补录任意时间段的作业记录
-- **统计** — 日视图/周视图，科目用时排名，每周总用时排行
-- **记录管理** — 按用户/科目筛选，编辑/删除，数据导入导出
+- **统计** — 日视图/周视图 + 趋势图，科目用时排名，每周总用时排行
+- **记录管理** — 按用户/科目筛选，编辑/删除，日期范围过滤，数据导入导出
 - **PWA** — 可安装到手机桌面，离线可用
+- **云同步** — 可选接入腾讯云 CloudBase，启用后自动同步到云端（需自行配置环境 ID）
 
 ## 技术栈
 
@@ -23,6 +24,7 @@
 | 构建 | Vite 6 |
 | 路由 | React Router v6 |
 | 数据库 | IndexedDB (via `idb` v8) |
+| 云数据库 | 腾讯云 CloudBase (可选，通过 `@cloudbase/js-sdk`) |
 | PWA | `vite-plugin-pwa` (Workbox) |
 | 样式 | 纯 CSS，移动优先，BEM 命名 |
 
@@ -39,15 +41,17 @@ npm run preview    # 预览打包结果
 
 ```
 src/
-  types.ts         — 类型定义，科目/年级配置
+  types.ts         — 类型定义，科目/年级配置，科目颜色/图标
   utils.ts         — 工具函数，localStorage 读写
-  db.ts            — IndexedDB 封装（单例，惰性迁移）
+  db.ts            — IndexedDB 封装（单例，惰性迁移，软删除）
+  cloudbase.ts     — 腾讯云 CloudBase SDK 初始化 + 匿名登录
+  sync.ts          — 云同步服务（推送/拉取/待处理队列/轮询）
   hooks/
     useTimer.ts    — 计时器状态机
-    useRecords.ts  — 记录 CRUD + 统计计算
-  components/      — TimerPanel, SubjectButton, 对话框等
+    useRecords.ts  — 记录 CRUD + 统计计算，触发同步
+  components/      — TimerPanel, SubjectButton, 对话框, SyncSettings
   pages/           — Timer, Stats, Records 三个标签页
-  App.tsx          — 路由 + 底部导航
+  App.tsx          — 路由 + 底部导航 + 同步初始化 + 状态指示器
   styles.css       — 全局样式
 ```
 
