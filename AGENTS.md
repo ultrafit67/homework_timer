@@ -15,10 +15,12 @@ src/
   hooks/
     useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
     useRecords.ts  — CRUD + computed stats + user/subject filter
+    useLocalSync.ts — LAN P2P sync via WebRTC (two-QR handshake, data channel exchange)
   components/
-    TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade)
+    TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade, reset defaults)
     SubjectButton, TimerDisplay, ConfirmDialog
     RecordItem, EditRecordDialog, SyncSettings
+    LocalSync.tsx  — LAN sync UI: QR scanner/generator, camera, self-test, sync status
   pages/           — TimerView, StatsView, RecordsView (tab content)
   App.tsx          — BrowserRouter + Routes + BottomNav + sync init + status indicator
   styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
@@ -66,6 +68,10 @@ src/
 - **Date range filter** on Records page: filter records by date range with start/end date pickers
 - **Auto-backup**: each record addition triggers a full backup to localStorage (`homework-backup`); restore button on Records page
 - **Subject colors/icons**: `SUBJECT_COLORS` + `SUBJECT_ICONS` in types.ts, applied to buttons, records, stats bars, and trend chart
+- **LAN P2P sync**: QR-based WebRTC sync between two devices on same LAN, no server required
+- **Export/Import with config**: JSON export includes user names + grades in versioned wrapper; import compatible with old format
+- **User config reset**: config dialog has "重置默认值" button to reset name/grade to defaults
+- **Clear all records**: "清除所有记录" button on Records page with confirmation dialog, permanently removes all records from IndexedDB
 
 ## Timer state machine (`useTimer.ts`)
 
@@ -99,10 +105,31 @@ src/
 
 - Store: `homework-timer.records` (keyPath: `id`)
 - Indexes: `date`, `subject`, `startTime`, `user` (added in v3)
-- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`, `backupAllRecords`, `restoreFromBackup`, `getAllRecordsForSync`, `hardDeleteRecord`, `upsertRecords`
+- `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`, `backupAllRecords`, `restoreFromBackup`, `getAllRecordsForSync`, `hardDeleteRecord`, `upsertRecords`, `clearAllRecords`
 - Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
 - Soft delete: `deleteRecord()` sets `deleted: true` instead of removing; `getAllRecords()` filters out deleted; `getAllRecordsForSync()` returns all including deleted (for sync)
 - CloudBase collection: `homework_records`, document `_id` = record `id`
+
+## LAN sync (P2P WebRTC, no server)
+
+- Opt-in via QR button on timer page → `useLocalSync` hook manages WebRTC peer connection + data channel
+- **Two-QR handshake**: sender creates Offer → QR → scanner scans → scanner creates Answer → QR → sender scans → `ondatachannel` fires, data channel opens
+- SDP compressed via `cleanSDP()`: removes `a=extmap-allow-mixed`, `a=msid-semantic`, `a=ice-options:trickle`; strips `generation N` / `network-cost N` from ICE candidates; dedup IPv4 host candidates; filters out TCP + IPv6 candidates
+- QR: `qrcode` library, `errorCorrectionLevel: 'L'`, `width: 300`, `margin: 1`
+- Camera: `jsQR` for scanning, `@vitejs/plugin-basic-ssl` for HTTPS (required for camera access on mobile)
+- STUN: `stun:stun.l.google.com:19302` (no TURN)
+- **Data exchange**: both sides call `getAllRecords()`, swap via `dc.send()`, then `upsertRecords()` on received data
+- **Message buffering**: `dc.onmessage` set permanently in `setupDataChannel()` to a buffer queue (`msgBufferRef`), preventing message loss during async DB reads. `exchangeRecords()` checks buffer first, then sets a fresh timeout-based waiter
+- **User config sync**: payload includes `userNames` + `userGrades`; merge rule: if local value equals default (`USERS[i]` for name, `0` for grade), adopt remote value
+- Self-test: "自检" button in dialog creates two in-page peer connections, bypasses QR/camera
+- Sync status: floating indicator (`sync-indicator`) at bottom-right, hidden by default
+- `a=max-message-size` preserved in SDP to keep 256KB message limit
+
+## Export/Import JSON
+
+- Records export includes `version: 2`, `records`, `userNames`, `userGrades` in a single JSON object
+- Import detects format: old (plain array) or v2 wrapper; restores both records and user config
+- `backupAllRecords()` / `restoreFromBackup()` also include user config
 
 ## Cloud sync (optional, 腾讯云 CloudBase)
 
@@ -132,7 +159,7 @@ src/
 
 - **github**: git push后会自动部署到  https://ultrafit67.github.io/homework_timer/
 - **Surge.sh** (已弃用): 部署地址: `https://ultrafit67-homework.surge.sh`
-- **手机访问**: 开发模式 `npm run dev` 直接局域网访问 `http://<电脑IP>:5173` 即可。
+- **手机访问**: 开发模式 `npm run dev` 直接局域网访问 `https://<电脑IP>:5173` 即可（自签名证书，浏览器确认安全警告）。
 
 ## GitHub
 
@@ -151,3 +178,6 @@ src/
 - Surge deployment blocked (API server `surge.surge.sh:443` unreachable).
 - User names are stored per-index in localStorage (`homework-name-0/1`). Renaming a user in the config dialog **auto-updates** all existing IndexedDB records for that user (via `renameUserRecords()` in `db.ts`).
 - **TimerPanel** receives `userName` as prop + `userIndex` (0/1) for localStorage key access; grade is stored by index, name is overridable.
+- **Config dialog reset**: "重置默认值" calls `saveUserName(i, USERS[i])` + `saveGrade(i, 0)`.
+- **LAN sync** requires HTTPS (camera access). Dev server uses `@vitejs/plugin-basic-ssl`.
+- **Data channel message buffering**: `dc.onmessage` must be set before `await getAllRecords()` to avoid lost-message race. `setupDataChannel` uses persistent `onmessage` → `msgBufferRef` queue.

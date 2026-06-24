@@ -12,8 +12,9 @@
 - **用户自定义** — 名字、年级均可修改，改名自动更新历史记录
 - **手动记录** — 补录任意时间段的作业记录
 - **统计** — 日视图/周视图 + 趋势图，科目用时排名，每周总用时排行
-- **记录管理** — 按用户/科目筛选，编辑/删除，日期范围过滤，数据导入导出
+- **记录管理** — 按用户/科目筛选，编辑/删除，日期范围过滤，数据导入导出（含名字/年级配置）
 - **PWA** — 可安装到手机桌面，离线可用
+- **局域网同步** — 两台设备在同一 WiFi 下通过扫码配对，直接 P2P 交换数据，无需服务器
 - **云同步** — 可选接入腾讯云 CloudBase，启用后自动同步到云端（需自行配置环境 ID）
 
 ## 技术栈
@@ -32,7 +33,7 @@
 
 ```bash
 npm install
-npm run dev        # 开发服务器 http://localhost:5173
+npm run dev        # 开发服务器 https://localhost:5173（HTTPS，用于摄像头访问）
 npm run build      # 类型检查 + 打包
 npm run preview    # 预览打包结果
 ```
@@ -49,7 +50,8 @@ src/
   hooks/
     useTimer.ts    — 计时器状态机
     useRecords.ts  — 记录 CRUD + 统计计算，触发同步
-  components/      — TimerPanel, SubjectButton, 对话框, SyncSettings
+    useLocalSync.ts — 局域网 P2P 同步（WebRTC）
+  components/      — TimerPanel, SubjectButton, LocalSync, 对话框, SyncSettings
   pages/           — Timer, Stats, Records 三个标签页
   App.tsx          — 路由 + 底部导航 + 同步初始化 + 状态指示器
   styles.css       — 全局样式
