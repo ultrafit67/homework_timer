@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Subject, HomeworkRecord } from '../types'
-import { generateId, getTodayDate } from '../utils'
+import { generateId, formatDate } from '../utils'
 
 export type TimerStatus = 'idle' | 'subjectSelected' | 'timing' | 'paused'
 
@@ -149,7 +149,7 @@ export function useTimer(userName: string): UseTimerReturn {
         startTime: s.startTime,
         endTime: now,
         durationSeconds: Math.round(elapsedMs / 1000),
-        date: getTodayDate(),
+        date: formatDate(new Date(s.startTime)),
         user: userName
       }
       setState(INITIAL_STATE)

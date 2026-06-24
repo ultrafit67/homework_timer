@@ -3,7 +3,7 @@ import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
 import { addRecord } from '../db'
-import { generateId, getTodayDate, loadGrade, loadUserNames, formatDuration } from '../utils'
+import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
 
 interface TimerViewProps {
   onRecordAdded: (record?: HomeworkRecord) => void
@@ -93,7 +93,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
         startTime: startISO,
         endTime: endISO,
         durationSeconds,
-        date: getTodayDate(),
+        date: formatDate(new Date(startISO)),
         user: users[manualUserIdx]
       }
       await addRecord(record)

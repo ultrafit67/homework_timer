@@ -29,7 +29,8 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
     try {
       const start = new Date(`${date}T${startTime}:00`).getTime()
       const end = new Date(`${date}T${endTime}:00`).getTime()
-      if (end > start) return Math.round((end - start) / 1000)
+      const adjustedEnd = end > start ? end : end + 86400000
+      return Math.round((adjustedEnd - start) / 1000)
     } catch { /* ignore invalid date/time */ }
     return 0
   }
@@ -38,8 +39,13 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
 
   const handleSave = async () => {
     if (!startTime || !endTime) return
-    const newStartISO = new Date(`${date}T${startTime}:00`).toISOString()
-    const newEndISO = new Date(`${date}T${endTime}:00`).toISOString()
+    let newStartDate = new Date(`${date}T${startTime}:00`)
+    let newEndDate = new Date(`${date}T${endTime}:00`)
+    if (newEndDate <= newStartDate) {
+      newEndDate = new Date(newEndDate.getTime() + 86400000)
+    }
+    const newStartISO = newStartDate.toISOString()
+    const newEndISO = newEndDate.toISOString()
     const durationSeconds = Math.round(
       (new Date(newEndISO).getTime() - new Date(newStartISO).getTime()) / 1000
     )
