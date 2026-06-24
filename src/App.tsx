@@ -5,6 +5,7 @@ import { TimerView } from './pages/TimerView'
 import { StatsView } from './pages/StatsView'
 import { RecordsView } from './pages/RecordsView'
 import { SyncSettings } from './components/SyncSettings'
+import { LocalSync } from './components/LocalSync'
 import { useRecords } from './hooks/useRecords'
 import { backupAllRecords } from './db'
 import { HomeworkRecord } from './types'
@@ -22,6 +23,7 @@ const SYNC_DOT_COLORS: Record<string, string> = {
 function AppContent() {
   const { refresh } = useRecords()
   const [showSync, setShowSync] = useState(false)
+  const [showLocalSync, setShowLocalSync] = useState(false)
   const [syncStatus, setSyncStatus] = useState(() => getStatus())
 
   useEffect(() => {
@@ -60,6 +62,9 @@ function AppContent() {
         <span className="sync-indicator__dot" style={{ background: syncColor }} />
         <span className="sync-indicator__label">同步</span>
       </button>
+      <button className="sync-indicator sync-indicator--local" onClick={() => setShowLocalSync(true)} title="本地同步">
+        <span className="sync-indicator__label">本地</span>
+      </button>
 
       {showSync && (
         <div className="dialog-overlay" onClick={() => setShowSync(false)}>
@@ -71,6 +76,8 @@ function AppContent() {
           </div>
         </div>
       )}
+
+      {showLocalSync && <LocalSync open={showLocalSync} onClose={() => setShowLocalSync(false)} />}
     </div>
   )
 }
