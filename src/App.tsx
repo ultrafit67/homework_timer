@@ -60,10 +60,10 @@ function AppContent() {
       <BottomNav />
       <button className="sync-indicator" onClick={() => setShowSync(true)} title={`同步状态: ${syncStatus}`}>
         <span className="sync-indicator__dot" style={{ background: syncColor }} />
-        <span className="sync-indicator__label">同步</span>
+        <span className="sync-indicator__label">云同步</span>
       </button>
       <button className="sync-indicator sync-indicator--local" onClick={() => setShowLocalSync(true)} title="本地同步">
-        <span className="sync-indicator__label">本地</span>
+        <span className="sync-indicator__label">本地扫码同步</span>
       </button>
 
       {showSync && (

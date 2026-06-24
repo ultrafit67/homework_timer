@@ -1704,7 +1704,8 @@ body {
 .localsync__test-steps .step-detail { flex-basis: 100%; color: var(--color-text-secondary, #666); word-break: break-all; }
 
 .sync-indicator--local {
-  right: 120px;
+  left: 12px;
+  right: auto;
   background: var(--color-primary);
   color: white;
   width: auto;
