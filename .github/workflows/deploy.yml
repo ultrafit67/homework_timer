@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages & Cloudflare Pages
+name: Deploy to GitHub Pages & Cloudflare Pages & CloudBase
 
 on:
   push:
@@ -38,14 +38,14 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-      - name: Upload dist for Cloudflare Pages
+      - name: Upload dist for third-party hosting
         uses: actions/upload-artifact@v4
         with:
-          name: cf-pages-dist
+          name: dist
           path: dist
           retention-days: 1
 
-  deploy:
+  deploy-github-pages:
     runs-on: ubuntu-latest
     needs: build
     environment:
@@ -72,7 +72,7 @@ jobs:
       - uses: actions/download-artifact@v4
         if: steps.check.outputs.defined == 'true'
         with:
-          name: cf-pages-dist
+          name: dist
           path: dist
       - name: Deploy to Cloudflare Pages
         if: steps.check.outputs.defined == 'true'
@@ -80,3 +80,30 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           command: pages deploy dist --project-name=homework-timer
+
+  deploy-cloudbase:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Check CloudBase env ID
+        id: check
+        env:
+          ENV_ID: ${{ secrets.CLOUDBASE_ENV_ID }}
+        run: |
+          if [ -n "$ENV_ID" ]; then
+            echo "defined=true" >> $GITHUB_OUTPUT
+          else
+            echo "defined=false" >> $GITHUB_OUTPUT
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.check.outputs.defined == 'true'
+        with:
+          name: dist
+          path: dist
+      - name: Deploy to CloudBase
+        if: steps.check.outputs.defined == 'true'
+        env:
+          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
+          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+        run: |
+          npx -y @cloudbase/cli@latest hosting:deploy dist -e ${{ secrets.CLOUDBASE_ENV_ID }} --quiet
