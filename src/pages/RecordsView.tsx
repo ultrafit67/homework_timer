@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import * as db from '../db'
-import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS } from '../types'
+import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS, getSubjectsForGrade } from '../types'
 import { loadUserNames, saveUserName, loadGrade, saveGrade } from '../utils'
 
 const PAGE_SIZE = 20
@@ -115,6 +115,15 @@ export function RecordsView() {
     }
   }
 
+  // Filter subjects by selected user's grade
+  const availableSubjects = useMemo(() => {
+    if (!userFilter) return SUBJECTS
+    const userIndex = loadUserNames().indexOf(userFilter)
+    if (userIndex === -1) return SUBJECTS
+    const grade = loadGrade(userIndex)
+    return getSubjectsForGrade(grade as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9)
+  }, [userFilter])
+
   if (loading) {
     return <div className="page"><p className="loading-text">加载中...</p></div>
   }
@@ -144,7 +153,7 @@ export function RecordsView() {
       <div className="user-tabs">
         <button
           className={`user-tabs__tab ${userFilter === null ? 'user-tabs__tab--active' : ''}`}
-          onClick={() => { filterByUser(null); setPage(0) }}
+          onClick={() => { filterByUser(null); filterBySubject(null); setPage(0) }}
         >
           全部
         </button>
@@ -152,7 +161,7 @@ export function RecordsView() {
           <button
             key={u}
             className={`user-tabs__tab ${userFilter === u ? 'user-tabs__tab--active' : ''}`}
-            onClick={() => { filterByUser(u); setPage(0) }}
+            onClick={() => { filterByUser(u); filterBySubject(null); setPage(0) }}
           >
             {u}
           </button>
@@ -166,7 +175,7 @@ export function RecordsView() {
         >
           全部
         </button>
-        {SUBJECTS.map(s => (
+        {availableSubjects.map(s => (
           <button
             key={s}
             className={`filter-bar__btn ${subjectFilter === s ? 'filter-bar__btn--active' : ''}`}

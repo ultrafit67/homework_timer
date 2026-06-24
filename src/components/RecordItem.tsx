@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { HomeworkRecord, SUBJECT_COLORS, SUBJECT_ICONS } from '../types'
 import { formatTime, formatDuration } from '../utils'
+import { ConfirmDialog } from './ConfirmDialog'
 
 interface RecordItemProps {
   record: HomeworkRecord
@@ -8,6 +10,8 @@ interface RecordItemProps {
 }
 
 export function RecordItem({ record, onDelete, onEdit }: RecordItemProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
   return (
     <div className="record-item">
       <div
@@ -33,14 +37,18 @@ export function RecordItem({ record, onDelete, onEdit }: RecordItemProps) {
       </button>
       <button
         className="record-item__delete"
-        onClick={() => {
-          if (confirm('确认删除此记录？')) {
-            onDelete(record.id)
-          }
-        }}
+        onClick={() => setShowDeleteConfirm(true)}
       >
         ✕
       </button>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="删除记录"
+        message="确认删除此记录？"
+        onConfirm={() => { onDelete(record.id); setShowDeleteConfirm(false) }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   )
 }
