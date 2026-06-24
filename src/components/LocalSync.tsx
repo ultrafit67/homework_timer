@@ -187,7 +187,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
                 <li key={i} className={s.ok ? 'step-ok' : 'step-fail'}>
                   <span className="step-icon">{s.ok ? '✓' : '✗'}</span>
                   <span className="step-name">{s.name}</span>
-                  <br />
                   <span className="step-detail">{s.detail}</span>
                 </li>
               ))}

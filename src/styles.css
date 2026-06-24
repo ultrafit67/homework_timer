@@ -1692,6 +1692,7 @@ body {
 }
 .localsync__test-steps li {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 3px 0;
   line-height: 1.4;
@@ -1700,7 +1701,7 @@ body {
 .localsync__test-steps .step-ok .step-icon { color: var(--color-success, #22C55E); }
 .localsync__test-steps .step-fail .step-icon { color: var(--color-error, #EF4444); }
 .localsync__test-steps .step-name { font-weight: 500; flex-shrink: 0; }
-.localsync__test-steps .step-detail { color: var(--color-text-secondary, #666); word-break: break-all; }
+.localsync__test-steps .step-detail { flex-basis: 100%; color: var(--color-text-secondary, #666); word-break: break-all; }
 
 .sync-indicator--local {
   right: 120px;
