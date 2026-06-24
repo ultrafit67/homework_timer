@@ -148,30 +148,35 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
               />
             </div>
 
-              <div className="dialog__field">
-               <label className="dialog__label">年级</label>
-               <div className="grade-grid">
-                 <button
-                   className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
-                   onClick={() => handleConfigSave(0)}
-                 >
-                   全部
-                 </button>
-                 {GRADES.map(g => (
+                <div className="dialog__field">
+                 <label className="dialog__label">年级</label>
+                 <div className="grade-grid">
                    <button
-                     key={g}
-                     className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
-                     onClick={() => handleConfigSave(g)}
+                     className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
+                     onClick={() => setGrade(0)}
                    >
-                     {g}年级
+                     全部
                    </button>
-                 ))}
+                   {GRADES.map(g => (
+                     <button
+                       key={g}
+                       className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
+                       onClick={() => setGrade(g)}
+                     >
+                       {g}年级
+                     </button>
+                   ))}
+                 </div>
                </div>
-             </div>
 
-             <button className="dialog__reset" onClick={handleConfigReset}>
-               重置默认值
-             </button>
+               <div className="dialog__actions">
+                 <button className="btn btn--secondary" onClick={() => setShowConfig(false)}>取消</button>
+                 <button className="btn btn--primary" onClick={() => handleConfigSave(grade)}>保存</button>
+               </div>
+
+               <button className="dialog__reset" onClick={handleConfigReset}>
+                 重置默认值
+               </button>
            </div>
         </div>
       )}
