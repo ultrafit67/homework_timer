@@ -163,6 +163,12 @@ export async function hardDeleteRecord(id: string): Promise<void> {
   await db.delete(STORE_NAME, id)
 }
 
+/** Permanently delete ALL records from IndexedDB */
+export async function clearAllRecords(): Promise<void> {
+  const db = await getDb()
+  await db.clear(STORE_NAME)
+}
+
 /** Upsert records from sync (update if exists, insert if not) */
 export async function upsertRecords(records: HomeworkRecord[]): Promise<void> {
   if (records.length === 0) return

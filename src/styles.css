@@ -379,6 +379,12 @@ body {
   padding: 8px 16px;
 }
 
+.btn--text-danger {
+  background: none;
+  color: var(--color-danger, #e74c3c);
+  padding: 8px 16px;
+}
+
 .btn--small {
   padding: 8px 16px;
   font-size: 14px;

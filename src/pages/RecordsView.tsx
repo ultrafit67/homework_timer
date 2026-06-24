@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import * as db from '../db'
 import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS } from '../types'
 import { loadUserNames, saveUserName, loadGrade, saveGrade } from '../utils'
@@ -14,6 +15,7 @@ export function RecordsView() {
   const [editingRecord, setEditingRecord] = useState<HomeworkRecord | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [importMsg, setImportMsg] = useState<string | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
@@ -97,6 +99,19 @@ export function RecordsView() {
     } catch (e) {
       setImportMsg('恢复失败：' + ((e as Error).message || '读取备份出错'))
       console.error('恢复备份失败', e)
+    }
+  }
+
+  const handleClearAll = async () => {
+    setShowClearConfirm(false)
+    setImportMsg(null)
+    try {
+      await db.clearAllRecords()
+      await refresh()
+      setImportMsg('已清除所有记录')
+    } catch (e) {
+      setImportMsg('清除失败')
+      console.error('清除记录失败', e)
     }
   }
 
@@ -220,8 +235,17 @@ export function RecordsView() {
         <button className="btn btn--text" onClick={() => fileInputRef.current?.click()}>导入数据</button>
         <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
         <button className="btn btn--text" onClick={handleRestore}>从备份恢复</button>
+        <button className="btn btn--text btn--text-danger" onClick={() => setShowClearConfirm(true)}>清除所有记录</button>
         {importMsg && <p className="data-io__msg">{importMsg}</p>}
       </div>
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        title="清除所有记录"
+        message="确定要清除所有记录吗？此操作不可恢复！"
+        onConfirm={handleClearAll}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   )
 }
