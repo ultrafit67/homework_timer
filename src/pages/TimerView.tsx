@@ -129,7 +129,9 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
 
   return (
     <div className="page timer-page">
-      <h2 className="page__title">家庭作业计时器</h2>
+      <div className="page__header">
+        <h2 className="page__title">家庭作业计时器</h2>
+      </div>
       {!showManual ? (
         <>
           <div className="timer-panels">
@@ -139,7 +141,6 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               onRecordAdded={onRecordAdded}
               onUserConfigChange={handleUserConfigChange}
             />
-            <div className="timer-panels__divider" />
             <TimerPanel
               userIndex={1}
               userName={users[1]}
@@ -147,14 +148,13 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               onUserConfigChange={handleUserConfigChange}
             />
           </div>
-
-          <div className="manual-entry-section">
-            <button className="btn btn--text btn--center" onClick={handleOpenManual}>
+          <div className="timer-page__footer">
+            <span className="manual-link" onClick={handleOpenManual}>
               手动记录
-            </button>
-            <button className="btn btn--text btn--center" onClick={() => setShowUsage(true)}>
-              使用方法
-            </button>
+            </span>
+            <span className="usage-link" onClick={() => setShowUsage(true)}>
+              遇到问题？查看使用方法
+            </span>
           </div>
         </>
       ) : (

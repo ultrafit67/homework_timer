@@ -83,13 +83,13 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
 
   return (
     <div className="timer-panel">
-      <div className="timer-panel__header-row">
+      <div className="timer-panel__name-row">
         <span className="timer-panel__name" onClick={openConfig}>
           {userName}
           {grade > 0 && <span className="timer-panel__grade-badge">{grade}年级</span>}
         </span>
-        <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
       </div>
+      <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
 
       {error && <div className="timer-panel__error">{error}</div>}
 

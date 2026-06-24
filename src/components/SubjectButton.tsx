@@ -1,4 +1,4 @@
-import { Subject, SUBJECT_COLORS, SUBJECT_ICONS } from '../types'
+import { Subject, SUBJECT_COLORS } from '../types'
 
 interface SubjectButtonProps {
   subject: Subject
@@ -18,9 +18,6 @@ export function SubjectButton({ subject, selected, disabled, onClick }: SubjectB
       onClick={() => onClick(subject)}
       disabled={disabled && !selected}
     >
-      <span className="subject-btn__icon" style={{ background: SUBJECT_COLORS[subject] }}>
-        {SUBJECT_ICONS[subject]}
-      </span>
       {subject}
     </button>
   )
