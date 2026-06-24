@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages & Cloudflare Pages
 
 on:
   push:
@@ -38,6 +38,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      - name: Upload dist for Cloudflare Pages
+        uses: actions/upload-artifact@v4
+        with:
+          name: cf-pages-dist
+          path: dist
+          retention-days: 1
 
   deploy:
     runs-on: ubuntu-latest
@@ -48,3 +54,29 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  deploy-cloudflare:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Check Cloudflare API token
+        id: check
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "defined=true" >> $GITHUB_OUTPUT
+          else
+            echo "defined=false" >> $GITHUB_OUTPUT
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.check.outputs.defined == 'true'
+        with:
+          name: cf-pages-dist
+          path: dist
+      - name: Deploy to Cloudflare Pages
+        if: steps.check.outputs.defined == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy dist --project-name=homework-timer
