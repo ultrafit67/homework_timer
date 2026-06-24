@@ -1390,3 +1390,181 @@ body {
 .dialog--sync .dialog__actions {
   margin-top: 16px;
 }
+
+/* LocalSync */
+.dialog--localsync {
+  max-width: 340px;
+}
+
+.localsync__mode-select {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.localsync__mode-select .btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.localsync__or {
+  color: var(--color-text-secondary);
+  font-size: 14px;
+}
+
+.localsync__progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 0;
+}
+
+.localsync__progress-text {
+  font-size: 15px;
+  color: var(--color-text-secondary);
+}
+
+.localsync__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: localsync-spin 0.8s linear infinite;
+}
+
+@keyframes localsync-spin {
+  to { transform: rotate(360deg); }
+}
+
+.localsync__qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.localsync__qr-image {
+  width: 220px;
+  height: 220px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  image-rendering: pixelated;
+}
+
+.localsync__hint {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.localsync__hint--secondary {
+  font-size: 13px;
+  color: var(--color-text-tertiary, #9CA3AF);
+}
+
+.localsync__text-fallback {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.localsync__scan-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.localsync__viewport {
+  width: 240px;
+  height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+  position: relative;
+}
+
+.localsync__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.localsync__text-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.localsync__textarea {
+  resize: none;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.localsync__complete {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 0;
+}
+
+.localsync__checkmark {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.localsync__complete-text {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.localsync__stats {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.localsync__error-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0;
+}
+
+.localsync__error-text {
+  font-size: 14px;
+  color: var(--color-error, #EF4444);
+  text-align: center;
+  line-height: 1.4;
+}
+
+.sync-indicator--local {
+  right: 120px;
+  background: var(--color-primary);
+  color: white;
+  width: auto;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+}
