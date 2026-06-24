@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Subject, Grade, GRADES, getSubjectsForGrade } from '../types'
+import { Subject, Grade, GRADES, USERS, getSubjectsForGrade } from '../types'
 import { useTimer } from '../hooks/useTimer'
 import { SubjectButton } from './SubjectButton'
 import { TimerDisplay } from './TimerDisplay'
@@ -64,6 +64,15 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
     }
     saveGrade(userIndex, newGrade)
     setGrade(newGrade)
+    setShowConfig(false)
+    onUserConfigChange?.()
+  }
+
+  const handleConfigReset = () => {
+    saveUserName(userIndex, USERS[userIndex])
+    saveGrade(userIndex, 0)
+    setEditName(USERS[userIndex])
+    setGrade(0)
     setShowConfig(false)
     onUserConfigChange?.()
   }
@@ -139,27 +148,31 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
               />
             </div>
 
-            <div className="dialog__field">
-              <label className="dialog__label">年级</label>
-              <div className="grade-grid">
-                <button
-                  className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
-                  onClick={() => handleConfigSave(0)}
-                >
-                  全部
-                </button>
-                {GRADES.map(g => (
-                  <button
-                    key={g}
-                    className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
-                    onClick={() => handleConfigSave(g)}
-                  >
-                    {g}年级
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+              <div className="dialog__field">
+               <label className="dialog__label">年级</label>
+               <div className="grade-grid">
+                 <button
+                   className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
+                   onClick={() => handleConfigSave(0)}
+                 >
+                   全部
+                 </button>
+                 {GRADES.map(g => (
+                   <button
+                     key={g}
+                     className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
+                     onClick={() => handleConfigSave(g)}
+                   >
+                     {g}年级
+                   </button>
+                 ))}
+               </div>
+             </div>
+
+             <button className="dialog__reset" onClick={handleConfigReset}>
+               重置默认值
+             </button>
+           </div>
         </div>
       )}
     </div>

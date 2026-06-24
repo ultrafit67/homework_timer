@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { getAllRecords, upsertRecords } from '../db'
-import { HomeworkRecord } from '../types'
+import { HomeworkRecord, USERS } from '../types'
+import { saveUserName, saveGrade, loadUserNames, loadGrade } from '../utils'
 
 /** A single self-test step log entry */
 export interface TestStep {
@@ -40,13 +41,87 @@ const RTC_CONFIG: RTCConfiguration = {
 const CONNECTION_TIMEOUT_MS = 30_000
 
 function cleanSDP(raw: string): string {
+  const seenIpv4Host = new Set<string>()
+  let seenSrflx = false
+
+  const dropLine = (line: string) =>
+    line.startsWith('a=sctp-port') ||
+    line.startsWith('a=extmap-allow-mixed') ||
+    line.startsWith('a=msid-semantic') ||
+    line.startsWith('a=ice-options:trickle')
+
+  const stripCandidateExtras = (line: string) =>
+    line.replace(/ generation \d+/g, '').replace(/ network-cost \d+/g, '')
+
+  const isCandidate = (line: string) => line.startsWith('a=candidate:')
+  const parts = (line: string) => line.split(' ')
+  const transport = (p: string[]) => p[2].toLowerCase()
+  const address = (p: string[]) => p[4]
+  const candType = (p: string[]) => p[6]
+
   return raw
     .split('\n')
+    .filter(l => !dropLine(l))
+    .map(l => isCandidate(l) ? stripCandidateExtras(l) : l)
     .filter(l => {
-      const trimmed = l.trim()
-      return !trimmed.startsWith('a=max-message-size') && !trimmed.startsWith('a=sctp-port')
+      if (!isCandidate(l)) return true
+      const p = parts(l)
+      if (p.length < 8) return true
+      if (transport(p) === 'tcp' || address(p).includes(':')) return false
+
+      if (candType(p) === 'host') {
+        if (seenIpv4Host.has(address(p))) return false
+        seenIpv4Host.add(address(p))
+        return true
+      }
+
+      if (candType(p) === 'srflx') {
+        if (seenSrflx) return false
+        seenSrflx = true
+        return true
+      }
+
+      return true
     })
     .join('\n')
+}
+
+interface SyncPayload {
+  type: 'records'
+  records: HomeworkRecord[]
+  userNames?: [string, string]
+  userGrades?: [number, number]
+}
+
+function buildPayload(records: HomeworkRecord[], names: string[], grades: number[]): string {
+  const payload: SyncPayload = {
+    type: 'records',
+    records,
+    userNames: [names[0], names[1]],
+    userGrades: [grades[0], grades[1]]
+  }
+  return JSON.stringify(payload)
+}
+
+function mergeUserConfig(payload: SyncPayload) {
+  const { userNames: remoteNames, userGrades: remoteGrades } = payload
+  if (!remoteNames && !remoteGrades) return
+  const localNames = loadUserNames()
+  if (remoteNames) {
+    for (let i = 0; i < 2; i++) {
+      if (localNames[i] === USERS[i] && remoteNames[i] !== USERS[i]) {
+        saveUserName(i, remoteNames[i])
+      }
+    }
+  }
+  if (remoteGrades) {
+    for (let i = 0; i < 2; i++) {
+      const localGrade = loadGrade(i)
+      if (localGrade === 0 && remoteGrades[i] !== 0) {
+        saveGrade(i, remoteGrades[i])
+      }
+    }
+  }
 }
 
 export function useLocalSync() {
@@ -60,6 +135,9 @@ export function useLocalSync() {
 
   const pcRef = useRef<RTCPeerConnection | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const exchangedRef = useRef(false)
+  /** Buffer for data channel messages that arrive before we're ready to process them */
+  const msgBufferRef = useRef<string[]>([])
 
   const cleanup = useCallback(() => {
     if (timeoutRef.current) {
@@ -85,65 +163,70 @@ export function useLocalSync() {
     const localRecords = await getAllRecords()
     const localCount = localRecords.length
 
-    if (role === 'sender') {
-      // Sender pushes first, then waits for scanner's response
-      dc.send(JSON.stringify({ type: 'records', records: localRecords }))
+    const waitForMessage = (timeoutMs: number) => new Promise<SyncPayload>((resolve, reject) => {
+      // Check buffer first — message may have arrived before exchangeRecords set up
+      while (msgBufferRef.current.length > 0) {
+        try {
+          const data = JSON.parse(msgBufferRef.current.shift()!)
+          if (data.type === 'records') return resolve(data as SyncPayload)
+        } catch { /* ignore malformed */ }
+      }
 
-      const remoteRecords = await new Promise<HomeworkRecord[]>((resolve, reject) => {
-        const handler = (e: MessageEvent) => {
-          try {
-            const data = JSON.parse(e.data)
-            if (data.type === 'records') {
-              dc.removeEventListener('message', handler)
-              resolve(data.records as HomeworkRecord[])
-            }
-          } catch { /* ignore malformed */ }
-        }
-        dc.addEventListener('message', handler)
-        setTimeout(() => {
-          dc.removeEventListener('message', handler)
-          reject(new Error('同步超时：未收到对方数据'))
-        }, 15_000)
-      })
+      const timer = setTimeout(() => {
+        dc.onmessage = null
+        reject(new Error('同步超时：未收到对方数据'))
+      }, timeoutMs)
 
-      await upsertRecords(remoteRecords)
-      updateStatus({
-        status: 'complete',
-        stats: { sent: localCount, received: remoteRecords.length }
-      })
-    } else {
-      // Scanner waits for sender's records, then pushes its own back
-      const remoteRecords = await new Promise<HomeworkRecord[]>((resolve, reject) => {
-        const handler = (e: MessageEvent) => {
-          try {
-            const data = JSON.parse(e.data)
-            if (data.type === 'records') {
-              dc.removeEventListener('message', handler)
-              resolve(data.records as HomeworkRecord[])
-            }
-          } catch { /* ignore malformed */ }
-        }
-        dc.addEventListener('message', handler)
-        setTimeout(() => {
-          dc.removeEventListener('message', handler)
-          reject(new Error('同步超时：未收到对方数据'))
-        }, 15_000)
-      })
+      dc.onmessage = (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data as string)
+          if (data.type === 'records') {
+            clearTimeout(timer)
+            dc.onmessage = null
+            resolve(data as SyncPayload)
+          }
+        } catch { /* ignore malformed */ }
+      }
+    })
 
-      await upsertRecords(remoteRecords)
-      dc.send(JSON.stringify({ type: 'records', records: localRecords }))
+    try {
+      const names = loadUserNames()
+      const grades = [loadGrade(0), loadGrade(1)]
 
-      updateStatus({
-        status: 'complete',
-        stats: { sent: localCount, received: remoteRecords.length }
-      })
+      if (role === 'sender') {
+        const payload = buildPayload(localRecords, names, grades)
+        dc.send(payload)
+        const remote = await waitForMessage(15_000)
+        await upsertRecords(remote.records)
+        mergeUserConfig(remote)
+        updateStatus({ status: 'complete', stats: { sent: localCount, received: remote.records.length } })
+      } else {
+        const remote = await waitForMessage(15_000)
+        await upsertRecords(remote.records)
+        mergeUserConfig(remote)
+        dc.send(buildPayload(localRecords, names, grades))
+        updateStatus({ status: 'complete', stats: { sent: localCount, received: remote.records.length } })
+      }
+    } catch (e) {
+      handleError(e instanceof Error ? e.message : '数据交换失败')
     }
-  }, [updateStatus])
+  }, [updateStatus, handleError])
 
   const setupDataChannel = useCallback((dc: RTCDataChannel, role: 'sender' | 'scanner') => {
-    dc.onopen = () => {
+    msgBufferRef.current = []
+
+    // Persistent onmessage: buffer everything so messages are never lost
+    dc.onmessage = (e: MessageEvent) => {
+      msgBufferRef.current.push(e.data as string)
+    }
+
+    const startExchange = () => {
+      if (exchangedRef.current) return
+      exchangedRef.current = true
       exchangeRecords(dc, role).catch(e => handleError(e.message))
     }
+    dc.onopen = startExchange
+    if (dc.readyState === 'open') startExchange()
     dc.onerror = () => handleError('数据通道连接错误')
     dc.onclose = () => {
       setState(prev => {
@@ -249,6 +332,8 @@ export function useLocalSync() {
 
   const reset = useCallback(() => {
     cleanup()
+    exchangedRef.current = false
+    msgBufferRef.current = []
     updateStatus({
       status: 'idle', role: null, sdp: null,
       stats: { sent: 0, received: 0 }, error: null

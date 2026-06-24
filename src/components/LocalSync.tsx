@@ -8,18 +8,16 @@ interface LocalSyncProps {
   onClose: () => void
 }
 
-const SCAN_INTERVAL_MS = 50
-const MAX_SCAN_ATTEMPTS = 300
+const SCAN_INTERVAL_MS = 200
 
 export function LocalSync({ open, onClose }: LocalSyncProps) {
   const { state, startAsSender, startAsScanner, setRemoteSDP, reset, runSelfTest } = useLocalSync()
 
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
-  const [textSdp, setTextSdp] = useState('')
-  const [showTextInput, setShowTextInput] = useState(false)
-
   const [testResult, setTestResult] = useState<SelfTestResult | null>(null)
   const [testing, setTesting] = useState(false)
+  const [senderScanning, setSenderScanning] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -28,7 +26,7 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
 
   useEffect(() => {
     if (state.sdp && state.status === 'showing-qr') {
-      QRCode.toDataURL(state.sdp, { width: 256, margin: 2 })
+      QRCode.toDataURL(state.sdp, { width: 300, margin: 1, errorCorrectionLevel: 'L' })
         .then(setQrDataUrl)
         .catch(() => setQrDataUrl(null))
     } else {
@@ -52,45 +50,72 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
 
   const startCamera = useCallback(async () => {
     try {
+      setCameraError(null)
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error(
+          '摄像头 API 不可用。请使用 HTTPS 访问（部署版本 https://ultrafit67.github.io/homework_timer/），或在 localhost 下访问。'
+        )
+      }
+
+      // wait for DOM to be ready
+      const waitForVideo = () => new Promise<void>((resolve) => {
+        if (videoRef.current) return resolve()
+        const timer = setInterval(() => {
+          if (videoRef.current) { clearInterval(timer); resolve() }
+        }, 20)
+      })
+      await waitForVideo()
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
       })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
+
+      const video = videoRef.current!
+      video.srcObject = stream
+
+      await new Promise<void>((resolve, reject) => {
+        video.onloadedmetadata = () => { video.play(); resolve() }
+        video.onerror = () => reject(new Error('video element error'))
+        // safety timeout: some browsers never fire loadedmetadata
+        setTimeout(() => {
+          if (video.readyState >= video.HAVE_CURRENT_DATA) {
+            video.play().then(resolve).catch(reject)
+          } else {
+            reject(new Error('camera stream timeout'))
+          }
+        }, 5000)
+      })
+
+      if (video.videoWidth === 0) {
+        throw new Error('camera stream has no video dimensions')
       }
 
-      let attempts = 0
       scanTimerRef.current = setInterval(() => {
         if (!videoRef.current || !canvasRef.current) return
-        const video = videoRef.current
+        const v = videoRef.current
         const canvas = canvasRef.current
         const ctx = canvas.getContext('2d')
         if (!ctx) return
-        if (video.readyState < video.HAVE_CURRENT_DATA) return
+        if (v.readyState < v.HAVE_CURRENT_DATA) return
 
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        ctx.drawImage(video, 0, 0)
+        canvas.width = v.videoWidth
+        canvas.height = v.videoHeight
+        ctx.drawImage(v, 0, 0)
 
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
         const code = jsQR(imageData.data, imageData.width, imageData.height)
 
         if (code) {
           stopCamera()
+          setSenderScanning(false)
           setRemoteSDP(code.data)
-          return
-        }
-
-        attempts++
-        if (attempts > MAX_SCAN_ATTEMPTS) {
-          stopCamera()
-          setShowTextInput(true)
         }
       }, SCAN_INTERVAL_MS)
-    } catch {
-      setShowTextInput(true)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setCameraError(msg)
     }
   }, [setRemoteSDP, stopCamera])
 
@@ -103,8 +128,7 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
       stopCamera()
       reset()
       setQrDataUrl(null)
-      setTextSdp('')
-      setShowTextInput(false)
+      setCameraError(null)
     }
   }, [open, reset, stopCamera])
 
@@ -121,8 +145,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
 
   const handleStartSender = () => { reset(); startAsSender() }
   const handleStartScanner = () => { reset(); startAsScanner(); setTimeout(startCamera, 100) }
-  const handleTextSubmit = () => { if (textSdp.trim()) { setRemoteSDP(textSdp.trim()); setShowTextInput(false) } }
-  const handleCopyText = async () => { if (state.sdp) await navigator.clipboard.writeText(state.sdp) }
 
   const statusLabels: Record<SyncStatus, string> = {
     idle: '',
@@ -179,18 +201,37 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
           </div>
         )}
 
-        {state.status === 'showing-qr' && qrDataUrl && (
+        {state.status === 'showing-qr' && state.role === 'sender' && qrDataUrl && !senderScanning && (
           <div className="localsync__qr-section">
             <p className="localsync__hint">{statusLabels[state.status]}</p>
             <img src={qrDataUrl} alt="QR Code" className="localsync__qr-image" />
-            {state.role === 'sender' ? (
-              <div className="localsync__text-fallback">
-                <button className="btn btn--text" onClick={handleCopyText}>复制二维码文字</button>
-                <button className="btn btn--text" onClick={() => setShowTextInput(true)}>手动输入对方信息</button>
-              </div>
-            ) : (
-              <p className="localsync__hint localsync__hint--secondary">请将此二维码展示给发送方扫码</p>
-            )}
+            <div className="localsync__text-fallback">
+              <button className="btn btn--text" onClick={() => { stopCamera(); setSenderScanning(true); setTimeout(startCamera, 100); }}>
+                扫码接收对方信息
+              </button>
+            </div>
+          </div>
+        )}
+
+        {state.status === 'showing-qr' && state.role === 'sender' && senderScanning && (
+          <div className="localsync__scan-section">
+            <p className="localsync__hint">请扫描对方设备上的二维码</p>
+            <div className="localsync__viewport">
+              <video ref={videoRef} className="localsync__video" autoPlay playsInline muted />
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+            </div>
+            <button className="btn btn--text" onClick={() => { stopCamera(); setSenderScanning(false); }}>
+              返回
+            </button>
+            {cameraError && <p className="localsync__camera-error">{cameraError}</p>}
+          </div>
+        )}
+
+        {state.status === 'showing-qr' && state.role === 'scanner' && qrDataUrl && (
+          <div className="localsync__qr-section">
+            <p className="localsync__hint">{statusLabels[state.status]}</p>
+            <img src={qrDataUrl} alt="QR Code" className="localsync__qr-image" />
+            <p className="localsync__hint localsync__hint--secondary">请将此二维码展示给发送方扫码</p>
           </div>
         )}
 
@@ -205,28 +246,10 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
           <div className="localsync__scan-section">
             <p className="localsync__hint">{statusLabels[state.status]}</p>
             <div className="localsync__viewport">
-              <video ref={videoRef} className="localsync__video" playsInline muted />
+              <video ref={videoRef} className="localsync__video" autoPlay playsInline muted />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
-            {showTextInput && (
-              <div className="localsync__text-input">
-                <textarea
-                  className="dialog__input localsync__textarea"
-                  placeholder="粘贴对方二维码文字"
-                  value={textSdp}
-                  onChange={e => setTextSdp(e.target.value)}
-                  rows={4}
-                />
-                <button className="btn btn--primary" onClick={handleTextSubmit} disabled={!textSdp.trim()}>
-                  确认
-                </button>
-              </div>
-            )}
-            {!showTextInput && (
-              <button className="btn btn--text" onClick={() => { stopCamera(); setShowTextInput(true); }}>
-                无法扫码？手动输入
-              </button>
-            )}
+            {cameraError && <p className="localsync__camera-error">{cameraError}</p>}
           </div>
         )}
 
@@ -235,7 +258,9 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
             <div className="localsync__checkmark">✓</div>
             <p className="localsync__complete-text">同步完成！</p>
             <p className="localsync__stats">
-              发送 {state.stats.sent} 条，接收 {state.stats.received} 条
+              {state.stats.sent === state.stats.received
+                ? `两端各有 ${state.stats.sent} 条，数据一致`
+                : `发送 ${state.stats.sent} 条，接收 ${state.stats.received} 条`}
             </p>
           </div>
         )}
