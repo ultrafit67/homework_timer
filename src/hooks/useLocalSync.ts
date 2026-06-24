@@ -208,7 +208,7 @@ export function useLocalSync() {
           setTimeout(resolve, 2000)
         })
 
-        const answerSdp = pc.localDescription?.sdp
+        const answerSdp = pc.localDescription!.sdp
         if (answerSdp) {
           updateStatus({ status: 'showing-qr', sdp: answerSdp })
         }
