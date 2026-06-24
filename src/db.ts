@@ -1,5 +1,6 @@
 import { openDB, IDBPDatabase } from 'idb'
 import { HomeworkRecord, Subject, USERS } from './types'
+import { loadUserNames, saveUserName, loadGrade, saveGrade } from './utils'
 
 const DB_NAME = 'homework-timer'
 const STORE_NAME = 'records'
@@ -75,7 +76,10 @@ async function migrateRecords(): Promise<void> {
 export async function backupAllRecords(): Promise<void> {
   try {
     const all = await getAllRecords()
-    localStorage.setItem('homework-backup', JSON.stringify(all))
+    const names = loadUserNames()
+    const grades = [loadGrade(0), loadGrade(1)]
+    const data = { version: 2, records: all, userNames: names, userGrades: grades }
+    localStorage.setItem('homework-backup', JSON.stringify(data))
     localStorage.setItem('homework-backup-at', new Date().toISOString())
   } catch (e) {
     console.warn('[DB] Backup failed', e)
@@ -85,7 +89,25 @@ export async function backupAllRecords(): Promise<void> {
 export async function restoreFromBackup(): Promise<number> {
   const raw = localStorage.getItem('homework-backup')
   if (!raw) throw new Error('没有找到备份数据')
-  const records: HomeworkRecord[] = JSON.parse(raw)
+  const data = JSON.parse(raw)
+  let records: HomeworkRecord[]
+  if (Array.isArray(data)) {
+    records = data
+  } else if (data.version === 2) {
+    records = data.records
+    if (data.userNames) {
+      for (let i = 0; i < data.userNames.length && i < 2; i++) {
+        saveUserName(i, data.userNames[i])
+      }
+    }
+    if (data.userGrades) {
+      for (let i = 0; i < data.userGrades.length && i < 2; i++) {
+        saveGrade(i, data.userGrades[i])
+      }
+    }
+  } else {
+    throw new Error('备份数据格式错误')
+  }
   return (await importRecords(records)).imported
 }
 

@@ -4,7 +4,7 @@ import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import * as db from '../db'
 import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS } from '../types'
-import { loadUserNames } from '../utils'
+import { loadUserNames, saveUserName, loadGrade, saveGrade } from '../utils'
 
 const PAGE_SIZE = 20
 
@@ -20,7 +20,10 @@ export function RecordsView() {
   const handleExport = async () => {
     try {
       const all = await db.getAllRecords()
-      const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' })
+      const names = loadUserNames()
+      const grades = [loadGrade(0), loadGrade(1)]
+      const data = { version: 2, records: all, userNames: names, userGrades: grades }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -45,8 +48,32 @@ export function RecordsView() {
     try {
       const text = await file.text()
       const data = JSON.parse(text)
-      if (!Array.isArray(data)) throw new Error('格式错误')
-      const result = await db.importRecords(data)
+      let records: HomeworkRecord[]
+      let names: string[] | undefined
+      let grades: number[] | undefined
+
+      if (Array.isArray(data)) {
+        records = data
+      } else if (data.version === 2) {
+        records = data.records
+        names = data.userNames
+        grades = data.userGrades
+      } else {
+        throw new Error('格式错误')
+      }
+
+      const result = await db.importRecords(records)
+      // Import user config
+      if (names) {
+        for (let i = 0; i < names.length && i < 2; i++) {
+          saveUserName(i, names[i])
+        }
+      }
+      if (grades) {
+        for (let i = 0; i < grades.length && i < 2; i++) {
+          saveGrade(i, grades[i])
+        }
+      }
       await refresh()
       if (result.skipped > 0) {
         setImportMsg(`成功导入 ${result.imported} 条，跳过 ${result.skipped} 条重复记录`)
