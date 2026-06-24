@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { HomeworkRecord, Subject, SUBJECTS, SUBJECT_COLORS, SUBJECT_ICONS } from '../types'
-import { loadUserNames } from '../utils'
+import { loadUserNames, formatDuration } from '../utils'
 
 interface EditRecordDialogProps {
   record: HomeworkRecord
@@ -14,14 +14,7 @@ function extractTime(iso: string): string {
 }
 
 function formatPreview(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = totalSeconds % 60
-  const parts: string[] = []
-  if (h > 0) parts.push(`${h}时`)
-  if (m > 0) parts.push(`${m}分`)
-  parts.push(`${s}秒`)
-  return parts.join('')
+  return formatDuration(totalSeconds)
 }
 
 export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogProps) {

@@ -3,7 +3,7 @@ import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
 import { addRecord } from '../db'
-import { generateId, getTodayDate, loadGrade, loadUserNames } from '../utils'
+import { generateId, getTodayDate, loadGrade, loadUserNames, formatDuration } from '../utils'
 
 interface TimerViewProps {
   onRecordAdded: (record?: HomeworkRecord) => void
@@ -255,11 +255,4 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   )
 }
 
-function formatDuration(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = totalSeconds % 60
-  if (h > 0) return `${h}时${m}分${s}秒`
-  if (m > 0) return `${m}分${s}秒`
-  return `${s}秒`
-}
+

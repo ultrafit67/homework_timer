@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { Subject, SUBJECT_COLORS } from '../types'
-import { loadUserNames, getWeekId } from '../utils'
+import { loadUserNames, getWeekId, formatDuration } from '../utils'
 
 type PeriodType = 'daily' | 'weekly' | 'trend'
 type TrendPeriod = 'weekly' | 'monthly'
@@ -105,15 +105,12 @@ export function StatsView() {
         ) : (
           <div className="weekly-list">
             {weeklyTotals.map((item, i) => {
-              const h = Math.floor(item.totalSeconds / 3600)
-              const m = Math.floor((item.totalSeconds % 3600) / 60)
-              const s = item.totalSeconds % 60
               return (
                 <div key={item.weekId} className="weekly-item">
                   <div className="weekly-item__rank">#{i + 1}</div>
                   <div className="weekly-item__week">第{item.weekId.split('-W')[1]}周</div>
                   <div className="weekly-item__time">
-                    {h > 0 ? `${h}时${m}分${s}秒` : m > 0 ? `${m}分${s}秒` : `${s}秒`}
+                    {formatDuration(item.totalSeconds)}
                   </div>
                 </div>
               )
@@ -333,11 +330,4 @@ export function StatsView() {
   )
 }
 
-function formatDuration(totalSeconds: number): string {
-  const h = Math.floor(totalSeconds / 3600)
-  const m = Math.floor((totalSeconds % 3600) / 60)
-  const s = totalSeconds % 60
-  if (h > 0) return `${h}时${m}分${s}秒`
-  if (m > 0) return `${m}分${s}秒`
-  return `${s}秒`
-}
+
