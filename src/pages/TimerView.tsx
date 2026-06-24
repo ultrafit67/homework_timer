@@ -162,7 +162,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
           <h3 className="manual-form__title">手动记录</h3>
 
           <div className="manual-form__field">
-            <label className="manual-form__label">用户</label>
+            <label className="manual-form__label">姓名</label>
             <div className="user-tabs">
               {users.map((u, i) => (
                 <button
@@ -263,19 +263,19 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <div className="dialog__body usage-guide">
               <section>
                 <h4>修改姓名/年级</h4>
-                <p>点击计时面板顶部的用户姓名，在弹出的对话框中修改名称和年级。修改姓名会自动更新历史记录中该用户的所有记录。</p>
+                <p>点击计时面板顶部的姓名，在弹出的对话框中修改姓名和年级。修改姓名会自动更新历史记录中该姓名的所有记录。</p>
               </section>
               <section>
                 <h4>手动记录</h4>
-                <p>点击计时页面的「手动记录」按钮，选择用户、科目后，可精确输入起止时间或使用快速录入（输入分钟数，以当前时间回推）。</p>
+                <p>点击计时页面的「手动记录」按钮，选择姓名、科目后，可精确输入起止时间或使用快速录入（输入分钟数，以当前时间回推）。</p>
               </section>
               <section>
                 <h4>本地扫码同步</h4>
-                <p>两台手机连接到同一 WiFi，点击计时页面的 QR 图标 →「发起同步」生成二维码，另一台点「扫描同步」扫码配对，自动交换数据。同步包含记录和用户配置（姓名/年级）。</p>
+                <p>两台手机连接到同一 WiFi，点击计时页面的 QR 图标 →「发起同步」生成二维码，另一台点「扫描同步」扫码配对，自动交换数据。同步包含记录和姓名配置（姓名/年级）。</p>
               </section>
               <section>
                 <h4>数据导入/导出</h4>
-                <p>在「记录」页面底部，点击「导出数据」下载 JSON 文件，包含所有作业记录和用户配置。导入时选择之前导出的文件即可恢复。</p>
+                <p>在「记录」页面底部，点击「导出数据」下载 JSON 文件，包含所有作业记录和姓名配置。导入时选择之前导出的文件即可恢复。</p>
               </section>
               <section>
                 <h4>清除所有记录</h4>

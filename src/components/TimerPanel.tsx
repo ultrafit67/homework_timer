@@ -134,10 +134,10 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
       {showConfig && (
         <div className="dialog-overlay" onClick={() => setShowConfig(false)}>
           <div className="dialog dialog--config" onClick={e => e.stopPropagation()}>
-            <h3 className="dialog__title">用户设置</h3>
+            <h3 className="dialog__title">姓名/年级设置</h3>
 
             <div className="dialog__field">
-              <label className="dialog__label">名称</label>
+              <label className="dialog__label">姓名</label>
               <input
                 type="text"
                 className="dialog__input"

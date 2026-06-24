@@ -89,7 +89,7 @@ export function EditRecordDialog({ record, onSave, onCancel }: EditRecordDialogP
         </div>
 
         <div className="dialog__field">
-          <label className="dialog__label">用户</label>
+          <label className="dialog__label">姓名</label>
           <div className="dialog__subject-group">
             {loadUserNames().map(u => (
               <button
