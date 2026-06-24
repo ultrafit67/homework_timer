@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import QRCode from 'qrcode'
 import jsQR from 'jsqr'
-import { useLocalSync, SyncStatus } from '../hooks/useLocalSync'
+import { useLocalSync, SyncStatus, SelfTestResult } from '../hooks/useLocalSync'
 
 interface LocalSyncProps {
   open: boolean
@@ -12,11 +12,14 @@ const SCAN_INTERVAL_MS = 50
 const MAX_SCAN_ATTEMPTS = 300
 
 export function LocalSync({ open, onClose }: LocalSyncProps) {
-  const { state, startAsSender, startAsScanner, setRemoteSDP, reset } = useLocalSync()
+  const { state, startAsSender, startAsScanner, setRemoteSDP, reset, runSelfTest } = useLocalSync()
 
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
   const [textSdp, setTextSdp] = useState('')
   const [showTextInput, setShowTextInput] = useState(false)
+
+  const [testResult, setTestResult] = useState<SelfTestResult | null>(null)
+  const [testing, setTesting] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -105,6 +108,15 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
     }
   }, [open, reset, stopCamera])
 
+  const handleRunTest = useCallback(async () => {
+    setTesting(true)
+    setTestResult(null)
+    reset()
+    const result = await runSelfTest()
+    setTestResult(result)
+    setTesting(false)
+  }, [reset, runSelfTest])
+
   if (!open) return null
 
   const handleStartSender = () => { reset(); startAsSender() }
@@ -137,6 +149,26 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
             <button className="btn btn--secondary btn--large" onClick={handleStartScanner}>
               扫码同步
             </button>
+            <div className="localsync__or">—</div>
+            <button className="btn btn--text" onClick={handleRunTest} disabled={testing}>
+              {testing ? '自测中…' : '自检（本地双 PC）'}
+            </button>
+          </div>
+        )}
+        {testResult && (
+          <div className="localsync__test-results">
+            <p className={testResult.ok ? 'localsync__test-verdict pass' : 'localsync__test-verdict fail'}>
+              {testResult.ok ? '✓ 自测通过' : '✗ 自测失败'}
+            </p>
+            <ul className="localsync__test-steps">
+              {testResult.steps.map((s, i) => (
+                <li key={i} className={s.ok ? 'step-ok' : 'step-fail'}>
+                  <span className="step-icon">{s.ok ? '✓' : '✗'}</span>
+                  <span className="step-name">{s.name}</span>
+                  <span className="step-detail">{s.detail}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

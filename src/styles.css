@@ -1559,6 +1559,39 @@ body {
   line-height: 1.4;
 }
 
+.localsync__test-results {
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--color-bg-secondary, #f5f5f5);
+  border-radius: var(--radius-md, 8px);
+  font-size: 13px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+.localsync__test-verdict {
+  margin: 0 0 8px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.localsync__test-verdict.pass { color: var(--color-success, #22C55E); }
+.localsync__test-verdict.fail { color: var(--color-error, #EF4444); }
+.localsync__test-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.localsync__test-steps li {
+  display: flex;
+  gap: 6px;
+  padding: 3px 0;
+  line-height: 1.4;
+}
+.localsync__test-steps .step-icon { flex-shrink: 0; width: 16px; }
+.localsync__test-steps .step-ok .step-icon { color: var(--color-success, #22C55E); }
+.localsync__test-steps .step-fail .step-icon { color: var(--color-error, #EF4444); }
+.localsync__test-steps .step-name { font-weight: 500; flex-shrink: 0; }
+.localsync__test-steps .step-detail { color: var(--color-text-secondary, #666); word-break: break-all; }
+
 .sync-indicator--local {
   right: 120px;
   background: var(--color-primary);

@@ -2,6 +2,19 @@ import { useCallback, useRef, useState } from 'react'
 import { getAllRecords, upsertRecords } from '../db'
 import { HomeworkRecord } from '../types'
 
+/** A single self-test step log entry */
+export interface TestStep {
+  name: string
+  ok: boolean
+  detail: string
+}
+
+/** Self-test result summary */
+export interface SelfTestResult {
+  ok: boolean
+  steps: TestStep[]
+}
+
 export type SyncStatus =
   | 'idle'
   | 'generating-offer'
@@ -25,6 +38,16 @@ const RTC_CONFIG: RTCConfiguration = {
 }
 
 const CONNECTION_TIMEOUT_MS = 30_000
+
+function cleanSDP(raw: string): string {
+  return raw
+    .split('\n')
+    .filter(l => {
+      const trimmed = l.trim()
+      return !trimmed.startsWith('a=max-message-size') && !trimmed.startsWith('a=sctp-port')
+    })
+    .join('\n')
+}
 
 export function useLocalSync() {
   const [state, setState] = useState<SyncState>({
@@ -157,7 +180,7 @@ export function useLocalSync() {
       const sdp = pc.localDescription?.sdp
       if (!sdp) throw new Error('无法生成 Offer SDP')
 
-      updateStatus({ status: 'showing-qr', sdp })
+      updateStatus({ status: 'showing-qr', sdp: cleanSDP(sdp) })
 
       timeoutRef.current = setTimeout(() => {
         handleError('连接超时：请确保两台设备在同一网络')
@@ -189,9 +212,11 @@ export function useLocalSync() {
     }
   }, [cleanup, handleError, setupDataChannel, updateStatus])
 
-  const setRemoteSDP = useCallback(async (sdp: string) => {
+  const setRemoteSDP = useCallback(async (rawSdp: string) => {
     const pc = pcRef.current
     if (!pc) { handleError('连接未初始化'); return }
+
+    const sdp = cleanSDP(rawSdp)
 
     try {
       if (!pc.localDescription) {
@@ -210,7 +235,7 @@ export function useLocalSync() {
 
         const answerSdp = pc.localDescription!.sdp
         if (answerSdp) {
-          updateStatus({ status: 'showing-qr', sdp: answerSdp })
+          updateStatus({ status: 'showing-qr', sdp: cleanSDP(answerSdp) })
         }
       } else {
         // Sender receiving the Answer from QR
@@ -230,5 +255,133 @@ export function useLocalSync() {
     })
   }, [cleanup, updateStatus])
 
-  return { state, startAsSender, startAsScanner, setRemoteSDP, reset }
+  /** Run a self-test in the same page: two PCs exchange cleaned SDP + data */
+  const runSelfTest = useCallback(async (): Promise<SelfTestResult> => {
+    const steps: TestStep[] = []
+    let ok = true
+
+    const add = (name: string, stepOk: boolean, detail: string) => {
+      steps.push({ name, ok: stepOk, detail })
+      if (!stepOk) ok = false
+    }
+
+    // --- PC1 (sender): create data channel, offer, local desc ---
+    let pc1: RTCPeerConnection | null = null
+    let pc2: RTCPeerConnection | null = null
+
+    try {
+      pc1 = new RTCPeerConnection(RTC_CONFIG)
+      const dc1 = pc1.createDataChannel('test-sync')
+
+      const dcOpened = new Promise<void>((resolve) => { dc1.onopen = () => resolve() })
+      const offer = await pc1.createOffer()
+      await pc1.setLocalDescription(offer)
+      await new Promise<void>((resolve) => {
+        if (pc1!.iceGatheringState === 'complete') { resolve(); return }
+        pc1!.onicegatheringstatechange = () => { if (pc1!.iceGatheringState === 'complete') resolve() }
+        setTimeout(resolve, 2000)
+      })
+      const rawOfferSdp = pc1.localDescription?.sdp ?? ''
+      add('PC1 创建 Offer', !!rawOfferSdp, rawOfferSdp ? `长度 ${rawOfferSdp.length}` : 'SDP 为空')
+
+      const rawPreview = rawOfferSdp.slice(0, 80).split('').map(c => {
+        const code = c.charCodeAt(0)
+        return code < 32 || code > 126 ? `\\x${code.toString(16).padStart(2, '0')}` : c
+      }).join('')
+      add('原始 SDP 前 80 字符', true, rawPreview)
+
+      const cleanedOfferSdp = cleanSDP(rawOfferSdp)
+      add('cleanSDP 后', true, `长度 ${rawOfferSdp.length}→${cleanedOfferSdp.length}`)
+
+      // Test 1: try RAW SDP on a fresh PC2
+      const pc2raw = new RTCPeerConnection(RTC_CONFIG)
+      try {
+        await pc2raw.setRemoteDescription({ type: 'offer', sdp: rawOfferSdp })
+        add('PC2 setRemoteDescription(原始 SDP)', true, '原始 SDP 可被接受')
+        pc2raw.close()
+      } catch (e: unknown) {
+        add('PC2 setRemoteDescription(原始 SDP)', false, e instanceof Error ? e.message : String(e))
+        pc2raw.close()
+        // If raw SDP also fails, the issue is not cleanSDP - re-throw
+        throw new Error('原始 SDP 也被拒绝，浏览器无法解析自己的 SDP')
+      }
+
+      // Test 2: try cleaned SDP
+      pc2 = new RTCPeerConnection(RTC_CONFIG)
+      let dc2Received: RTCDataChannel | null = null
+      const dc2Ready = new Promise<void>((resolve) => {
+        pc2!.ondatachannel = (ev) => { dc2Received = ev.channel; resolve() }
+      })
+
+      try {
+        await pc2.setRemoteDescription({ type: 'offer', sdp: cleanedOfferSdp })
+        add('PC2 setRemoteDescription(清洗后 SDP)', true, '成功')
+      } catch (e: unknown) {
+        add('PC2 setRemoteDescription(清洗后 SDP)', false, e instanceof Error ? e.message : String(e))
+        throw e
+      }
+
+      // --- PC2: create answer, local desc ---
+      const answer = await pc2.createAnswer()
+      await pc2.setLocalDescription(answer)
+      await new Promise<void>((resolve) => {
+        if (pc2!.iceGatheringState === 'complete') { resolve(); return }
+        pc2!.onicegatheringstatechange = () => { if (pc2!.iceGatheringState === 'complete') resolve() }
+        setTimeout(resolve, 2000)
+      })
+      const rawAnswerSdp = pc2.localDescription?.sdp ?? ''
+      add('PC2 创建 Answer', !!rawAnswerSdp, rawAnswerSdp ? `长度 ${rawAnswerSdp.length}` : 'SDP 为空')
+
+      const cleanedAnswerSdp = cleanSDP(rawAnswerSdp)
+
+      // --- PC1: receive answer via setRemoteDescription ---
+      try {
+        await pc1.setRemoteDescription({ type: 'answer', sdp: cleanedAnswerSdp })
+        add('PC1 setRemoteDescription(answer)', true, '成功')
+      } catch (e: unknown) {
+        add('PC1 setRemoteDescription(answer)', false, e instanceof Error ? e.message : String(e))
+        throw e
+      }
+
+      // --- Wait for data channel on PC2 ---
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('ondatachannel 超时')), 5000)
+        dc2Ready.then(() => { clearTimeout(timer); resolve() })
+      })
+      add('PC2 ondatachannel 触发', !!dc2Received, dc2Received ? '收到数据通道事件' : '未触发')
+
+      // --- Wait for data channel to open on PC1 ---
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('数据通道打开超时')), 5000)
+        dcOpened.then(() => { clearTimeout(timer); resolve() })
+      })
+      add('PC1 数据通道打开', true, 'dc.onopen 触发')
+
+      // --- Exchange test data ---
+      const msgFromPc2 = new Promise<string>((resolve) => {
+        if (!dc2Received) { resolve('无数据通道'); return }
+        dc2Received.onmessage = (e) => resolve(e.data as string)
+      })
+      dc1.send(JSON.stringify({ test: 'hello from PC1' }))
+      const received = await msgFromPc2
+      add('PC1 → PC2 数据收发', received.includes('hello from PC1'), `PC2 收到: ${received}`)
+
+      const msgFromPc1 = new Promise<string>((resolve) => {
+        dc1.onmessage = (e) => resolve(e.data as string)
+      })
+      dc2Received!.send(JSON.stringify({ test: 'hello from PC2' }))
+      const received2 = await msgFromPc1
+      add('PC2 → PC1 数据收发', received2.includes('hello from PC2'), `PC1 收到: ${received2}`)
+
+    } catch (e: unknown) {
+      add('⚠ 自测异常', false, e instanceof Error ? e.message : String(e))
+    } finally {
+      pc1?.close()
+      pc2?.close()
+    }
+
+    return { ok, steps }
+  }, [])
+
+  return { state, startAsSender, startAsScanner, setRemoteSDP, reset, runSelfTest }
 }
