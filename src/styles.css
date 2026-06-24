@@ -879,6 +879,29 @@ body {
   border-radius: 12px;
 }
 
+.dialog--usage {
+  max-width: 360px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.usage-guide section {
+  margin-bottom: 16px;
+}
+
+.usage-guide h4 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.usage-guide p {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+  line-height: 1.6;
+  margin: 0;
+}
+
 /* Manual Entry */
 .manual-entry-section {
   margin-top: 12px;

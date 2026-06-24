@@ -30,6 +30,7 @@ function calcDurationSeconds(start: string, end: string): number {
 
 export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [showManual, setShowManual] = useState(false)
+  const [showUsage, setShowUsage] = useState(false)
   const [users, setUsers] = useState<string[]>(() => loadUserNames())
   const [manualUserIdx, setManualUserIdx] = useState<number>(0)
   const [manualSubject, setManualSubject] = useState<Subject | null>(null)
@@ -128,7 +129,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
 
   return (
     <div className="page timer-page">
-      <h2 className="page__title">每日作业计时器</h2>
+      <h2 className="page__title">家庭作业计时器</h2>
       {!showManual ? (
         <>
           <div className="timer-panels">
@@ -150,6 +151,9 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
           <div className="manual-entry-section">
             <button className="btn btn--text btn--center" onClick={handleOpenManual}>
               手动记录
+            </button>
+            <button className="btn btn--text btn--center" onClick={() => setShowUsage(true)}>
+              使用方法
             </button>
           </div>
         </>
@@ -248,6 +252,43 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <button className="btn btn--primary btn--large" onClick={handleManualSave}>
               保存
             </button>
+          </div>
+        </div>
+      )}
+
+      {showUsage && (
+        <div className="dialog-overlay" onClick={() => setShowUsage(false)}>
+          <div className="dialog dialog--usage" onClick={e => e.stopPropagation()}>
+            <h3 className="dialog__title">使用方法</h3>
+            <div className="dialog__body usage-guide">
+              <section>
+                <h4>修改姓名/年级</h4>
+                <p>点击计时面板顶部的用户姓名，在弹出的对话框中修改名称和年级。修改姓名会自动更新历史记录中该用户的所有记录。</p>
+              </section>
+              <section>
+                <h4>手动记录</h4>
+                <p>点击计时页面的「手动记录」按钮，选择用户、科目后，可精确输入起止时间或使用快速录入（输入分钟数，以当前时间回推）。</p>
+              </section>
+              <section>
+                <h4>本地扫码同步</h4>
+                <p>两台手机连接到同一 WiFi，点击计时页面的 QR 图标 →「发起同步」生成二维码，另一台点「扫描同步」扫码配对，自动交换数据。同步包含记录和用户配置（姓名/年级）。</p>
+              </section>
+              <section>
+                <h4>数据导入/导出</h4>
+                <p>在「记录」页面底部，点击「导出数据」下载 JSON 文件，包含所有作业记录和用户配置。导入时选择之前导出的文件即可恢复。</p>
+              </section>
+              <section>
+                <h4>清除所有记录</h4>
+                <p>在「记录」页面底部点击「清除所有记录」，确认后永久删除全部记录，不可恢复。</p>
+              </section>
+              <section>
+                <h4>云同步</h4>
+                <p>在「设置」页面填入腾讯云 CloudBase 环境 ID 并开启，数据自动同步到云端。局域网同步和云同步可同时使用。</p>
+              </section>
+            </div>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => setShowUsage(false)}>知道了</button>
+            </div>
           </div>
         </div>
       )}
