@@ -13,7 +13,10 @@ export async function initCloudBase(envId: string): Promise<void> {
 
   currentEnv = envId
   app = CloudBase.init({ env: envId })
-  await app.auth().anonymousAuthProvider.signIn()
+  const authRes = await app.auth().signInAnonymously()
+  if (authRes.error) {
+    throw new Error(authRes.error.message || '匿名登录失败')
+  }
   db = app.database()
 }
 

@@ -203,7 +203,7 @@ async function syncCycle(): Promise<void> {
 // ---- Start/Stop ----
 
 export async function startSync(): Promise<void> {
-  stopSync()
+  await stopSync()
 
   const envId = getEnvId()
   if (!envId) {
@@ -233,7 +233,7 @@ export async function startSync(): Promise<void> {
     // Start polling
     pollTimer = setInterval(syncCycle, POLL_INTERVAL)
   } catch (e: any) {
-    const msg = e?.message || String(e) || 'unknown'
+    const msg = e?.message || e?.errMsg || e?.error?.message || (typeof e === 'object' ? JSON.stringify(e) : String(e)) || 'unknown'
     setStatus(`error: ${msg}`)
   }
 }

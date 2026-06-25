@@ -86,6 +86,10 @@ function AppContent() {
   }, [refresh])
 
   const syncColor = SYNC_DOT_COLORS[syncStatus] || '#9CA3AF'
+  const syncLabel: Record<string, string> = {
+    closed: '已关闭', 'no-env-id': '未配置', connecting: '连接中',
+    syncing: '同步中', synced: '已同步', error: ''
+  }
 
   return (
     <div className="app">
@@ -100,7 +104,7 @@ function AppContent() {
       <BottomNav />
       <button className="sync-indicator" onClick={() => setShowSync(true)} title={`同步状态: ${syncStatus}`}>
         <span className="sync-indicator__dot" style={{ background: syncColor }} />
-        <span className="sync-indicator__label">云同步</span>
+        <span className="sync-indicator__label">云同步{syncLabel[syncStatus] ? ` · ${syncLabel[syncStatus]}` : ''}</span>
       </button>
       <button className="sync-indicator sync-indicator--local" onClick={() => setShowLocalSync(true)} title="本地同步">
         <span className="sync-indicator__label">本地扫码同步</span>
