@@ -394,6 +394,10 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+.btn:focus {
+  outline: none;
+}
+
 .btn:active {
   transform: scale(0.97);
 }
@@ -441,6 +445,10 @@ body {
   font-size: 14px;
   background: var(--color-bg);
   color: var(--color-text);
+}
+
+.btn--small:hover {
+  background: #E5E9F0;
 }
 
 .btn--disabled, .btn:disabled {
