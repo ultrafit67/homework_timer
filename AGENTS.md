@@ -1,6 +1,6 @@
 # AGENTS.md - homework_app
 
-A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI. Optional cloud sync via 腾讯云 CloudBase.
+A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Records), all data in IndexedDB, Chinese UI.
 
 ## Architecture
 
@@ -8,10 +8,8 @@ A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Re
 src/
   types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade, SUBJECT_COLORS, SUBJECT_ICONS
   utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats,
-                     loadGrade, saveGrade, loadUserNames, saveUserName
+                     loadGrade, saveGrade, loadUserNames, saveUserName, auto-backup
   db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
-  cloudbase.ts     — CloudBase JS SDK init + anonymous auth + stop
-  sync.ts          — Cloud sync service (push/pull/polling/pending queue)
   hooks/
     useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
     useRecords.ts  — CRUD + computed stats + user/subject filter
@@ -19,20 +17,20 @@ src/
   components/
     TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade, reset defaults)
     SubjectButton, TimerDisplay, ConfirmDialog
-    RecordItem, EditRecordDialog, SyncSettings
+    RecordItem, EditRecordDialog
     LocalSync.tsx  — LAN sync UI: QR scanner/generator, camera, self-test, sync status
   pages/           — TimerView, StatsView, RecordsView (tab content)
-  App.tsx          — BrowserRouter + Routes + BottomNav + sync init + status indicator
+  App.tsx          — BrowserRouter + Routes + BottomNav + sync status indicator
   styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
 ```
 
 ## Critical gotchas
 
-- **`idb` v8 upgrade callback must NOT be async.** `openDB` resolves on `onsuccess` immediately after `onupgradeneeded` returns — it does NOT wait for async operations inside the callback. DB migrations must be done lazily after `getDb()` resolves (see `db.ts:migrateRecords()`).
 - **React 19 Strict Mode double-invokes state updaters.** `useTimer.complete()` reads from a `stateRef` (not closure state) to avoid the double-invoke bug where `setState` updater callbacks execute twice.
+- **`idb` v8 upgrade callback must NOT be async.** `openDB` resolves on `onsuccess` immediately after `onupgradeneeded` returns — it does NOT wait for async operations inside the callback. DB migrations must be done lazily after `getDb()` resolves (see `db.ts:migrateRecords()`).
 - **`crypto.randomUUID()` fallback.** `generateId()` in `utils.ts` falls back to `Date.now() + Math.random()` if `crypto.randomUUID` is unavailable.
 - **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
-- **@cloudbase/js-sdk is bundled inline.** There is no `@cloudbase` entry in `tsconfig.json` paths — SDK is resolved directly from `node_modules` at build time. The bundle size warning (~1MB JS) is expected.
+- **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 - **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 - **Timer state persisted to `sessionStorage`.** Timer state (status, selectedSubject, accruedMs, timingStart) is saved to `sessionStorage` on every change and restored on mount. This survives page refresh/reload. Keyed by `userName` (`timer-state-{userName}`). Cleared on complete/reset. This means the timer survives browser tab restorations that trigger a page reload.
 
@@ -131,21 +129,6 @@ src/
 - Import detects format: old (plain array) or v2 wrapper; restores both records and user config
 - `backupAllRecords()` / `restoreFromBackup()` also include user config
 
-## Cloud sync (optional, 腾讯云 CloudBase)
-
-- Opt-in via settings toggle + env ID input (stored in localStorage: `sync-enabled`, `sync-env-id`)
-- `cloudbase.ts`: `initCloudBase(envId)` → anonymous auth → `getDB()` for CloudBase DB ref
-- `sync.ts` exports: `startSync()`, `stopSync()`, `syncPushRecord()`, `syncDeleteRecord()`, `isSyncEnabled()`, `getEnvId()`, `setSyncEnabled()`, `setEnvId()`, `setStatusCallback()`, `getStatus()`
-- Sync flow:
-  1. `startSync()` → init CloudBase → push all local records not in cloud → pull changes since last sync → start 30s polling
-  2. On record add/update/delete → `syncPushRecord()` / `syncDeleteRecord()` attempts real-time push
-  3. If offline or CloudBase unreachable → operation queued in localStorage (`sync-pending`) → flushed on next successful cycle
-  4. `pullRemoteChanges()` fetches records with `_updatedAt > lastSync` → `upsertRecords()` in IndexedDB
-- Status lifecycle: `closed` → `no-env-id` → `connecting` → `syncing` → `synced` | `error: {msg}`
-- Status indicator: floating pill at bottom-right, color-coded dot + "同步" text, click opens SyncSettings dialog
-- `App.tsx`: `useEffect` on mount auto-starts sync if enabled; `onRecordAdded` calls `syncPushRecord`
-- `useRecords.ts`: `handleDelete` calls `syncDeleteRecord`, `handleUpdate` calls `syncPushRecord`
-- Sync indicator CSS: `.sync-indicator` positioned fixed, `bottom: calc(env(safe-area-inset-bottom) + 72px)`
 
 ## Routes
 

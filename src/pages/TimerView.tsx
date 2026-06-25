@@ -281,10 +281,6 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
                 <h4>清除所有记录</h4>
                 <p>在「记录」页面底部点击「清除所有记录」，确认后永久删除全部记录，不可恢复。</p>
               </section>
-              <section>
-                <h4>云同步</h4>
-                <p>在「设置」页面填入腾讯云 CloudBase 环境 ID 并开启，数据自动同步到云端。局域网同步和云同步可同时使用。</p>
-              </section>
             </div>
             <div className="dialog__actions">
               <button className="btn btn--primary" onClick={() => setShowUsage(false)}>知道了</button>
