@@ -154,24 +154,66 @@ interface AIAnalysisProps {
   dateTo: string
 }
 
-function downloadMd(content: string, prefix: string) {
+interface ExportMeta {
+  user: string
+  dateFrom: string
+  dateTo: string
+  recordCount: number
+}
+
+function exportMd(content: string, meta: ExportMeta) {
   const now = new Date()
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
-  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+  const frontMatter = [
+    '---',
+    `user: ${meta.user}`,
+    `date_from: ${meta.dateFrom || ''}`,
+    `date_to: ${meta.dateTo || ''}`,
+    `record_count: ${meta.recordCount}`,
+    '---',
+    ''
+  ].join('\n')
+  const blob = new Blob([frontMatter + content], { type: 'text/markdown;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `ai-analysis-${prefix}-${dateStr}.md`
+  a.download = `ai-analysis-${meta.user}-${dateStr}.md`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
+function parseImportMd(text: string): { content: string; meta: Partial<ExportMeta> } {
+  const meta: Partial<ExportMeta> = {}
+  let content = text
+
+  if (text.startsWith('---\n')) {
+    const end = text.indexOf('\n---\n', 4)
+    if (end !== -1) {
+      const fm = text.slice(4, end)
+      for (const line of fm.split('\n')) {
+        const sep = line.indexOf(': ')
+        if (sep === -1) continue
+        const key = line.slice(0, sep).trim()
+        const val = line.slice(sep + 2).trim()
+        if (key === 'user') meta.user = val
+        else if (key === 'date_from') meta.dateFrom = val
+        else if (key === 'date_to') meta.dateTo = val
+        else if (key === 'record_count') meta.recordCount = parseInt(val, 10) || 0
+      }
+      content = text.slice(end + 5)
+    }
+  }
+
+  return { content, meta }
+}
+
 export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysisProps) {
   const [expanded, setExpanded] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [importDup, setImportDup] = useState<{ user: string; dateFrom: string; dateTo: string; recordCount: number } | null>(null)
   const [historyList, setHistoryList] = useState<AIHistoryEntry[]>(() => getAIHistory())
   const [viewingHistory, setViewingHistory] = useState<AIHistoryEntry | null>(null)
   const { loading, error, result, analyze, abort, clearResult } = useAI()
@@ -188,20 +230,26 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      const content = reader.result as string
+      const { content, meta } = parseImportMd(reader.result as string)
+
+      const existing = getAIHistory()
+      if (existing.some(e => e.result === content)) {
+        setImportDup({ user: meta.user || '导入', dateFrom: meta.dateFrom || '', dateTo: meta.dateTo || '', recordCount: meta.recordCount || 0 })
+        return
+      }
+
       const entry: AIHistoryEntry = {
         id: generateId(),
         timestamp: new Date().toISOString(),
-        user: '导入',
+        user: meta.user || '导入',
         grade: 0,
-        dateFrom: '',
-        dateTo: '',
-        recordCount: 0,
+        dateFrom: meta.dateFrom || '',
+        dateTo: meta.dateTo || '',
+        recordCount: meta.recordCount || 0,
         result: content
       }
-      const history = getAIHistory()
-      history.unshift(entry)
-      saveAIHistory(history)
+      existing.unshift(entry)
+      saveAIHistory(existing)
       setViewingHistory(entry)
       clearResult()
       setShowHistory(false)
@@ -338,6 +386,27 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
             </div>
           )}
 
+          {importDup && (
+            <div className="ai-confirm">
+              <p className="ai-confirm__label">该分析结果已存在，跳过导入</p>
+              <div className="ai-confirm__row">
+                <span className="ai-confirm__field">姓名</span>
+                <span className="ai-confirm__value">{importDup.user}</span>
+              </div>
+              <div className="ai-confirm__row">
+                <span className="ai-confirm__field">时间范围</span>
+                <span className="ai-confirm__value">{importDup.dateFrom || '不限'} ~ {importDup.dateTo || '不限'}</span>
+              </div>
+              <div className="ai-confirm__row">
+                <span className="ai-confirm__field">记录数</span>
+                <span className="ai-confirm__value">{importDup.recordCount}条</span>
+              </div>
+              <div className="ai-confirm__actions">
+                <button className="btn btn--primary btn--small" onClick={() => setImportDup(null)}>确定</button>
+              </div>
+            </div>
+          )}
+
           {!hasRecords && !result && !error && !viewingHistory && !showConfirm && (
             <p className="ai-section__empty">当前筛选条件下没有记录</p>
           )}
@@ -362,7 +431,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
               <p className="ai-result__meta">
                 <span>分析时间：{new Date().toLocaleString('zh-CN')} ｜ 记录数：{records.length}条</span>
                 <span className="ai-result__meta-actions">
-                  <button className="ai-result__action" onClick={() => downloadMd(result, activeUserName)}>导出</button>
+                  <button className="ai-result__action" onClick={() => exportMd(result, { user: activeUserName, dateFrom, dateTo, recordCount: records.length })}>导出</button>
                 </span>
               </p>
             </div>
@@ -377,7 +446,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
               <p className="ai-result__meta">
                 <span>{viewingHistory.user} ｜ {viewingHistory.dateFrom || '不限'} ~ {viewingHistory.dateTo || '不限'} ｜ {viewingHistory.recordCount}条</span>
                 <span className="ai-result__meta-actions">
-                  <button className="ai-result__action" onClick={() => downloadMd(viewingHistory.result, viewingHistory.user)}>导出</button>
+                  <button className="ai-result__action" onClick={() => exportMd(viewingHistory.result, { user: viewingHistory.user, dateFrom: viewingHistory.dateFrom, dateTo: viewingHistory.dateTo, recordCount: viewingHistory.recordCount })}>导出</button>
                   <button className="ai-result__del" onClick={() => handleDeleteHistory(viewingHistory.id)}>删除</button>
                 </span>
               </p>
