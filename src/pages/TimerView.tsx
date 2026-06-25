@@ -5,6 +5,7 @@ import { SubjectButton } from '../components/SubjectButton'
 import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
+import { loadApiKey } from '../hooks/useAI'
 
 interface TimerViewProps {
   onRecordAdded: (record?: HomeworkRecord) => void
@@ -41,6 +42,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [manualEnd, setManualEnd] = useState('')
   const [manualMinutes, setManualMinutes] = useState(30)
   const [error, setError] = useState<string | null>(null)
+  const hasApiKey = useMemo(() => !!loadApiKey(), [showApiKey])
 
   const handleUserConfigChange = () => {
     setUsers(loadUserNames())
@@ -70,9 +72,9 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
         return
       }
       const now = new Date()
-      const start = new Date(now.getTime() - manualMinutes * 60000)
-      startISO = start.toISOString()
-      endISO = now.toISOString()
+      const end = new Date(now.getTime() + manualMinutes * 60000)
+      startISO = now.toISOString()
+      endISO = end.toISOString()
       durationSeconds = manualMinutes * 60
     } else {
       if (!manualStart || !manualEnd) {
@@ -121,8 +123,8 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
 
   const handleOpenManual = () => {
     const now = new Date()
-    const endStr = toLocalDatetimeString(now.toISOString())
-    const startStr = toLocalDatetimeString(new Date(now.getTime() - 1800000).toISOString())
+    const startStr = toLocalDatetimeString(now.toISOString())
+    const endStr = toLocalDatetimeString(new Date(now.getTime() + 1800000).toISOString())
     setManualStart(startStr)
     setManualEnd(endStr)
     setShowManual(true)
@@ -154,7 +156,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <span className="manual-link" onClick={handleOpenManual}>
               手动记录
             </span>
-            <span className="ai-settings-link" onClick={() => setShowApiKey(true)}>
+            <span className={`ai-settings-link${hasApiKey ? ' ai-settings-link--set' : ''}`} onClick={() => setShowApiKey(true)}>
               AI设置
             </span>
             <span className="usage-link" onClick={() => setShowUsage(true)}>
@@ -244,7 +246,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
                 value={manualMinutes}
                 onChange={e => setManualMinutes(Math.max(1, parseInt(e.target.value) || 0))}
               />
-              <div className="manual-form__hint">以当前时间为结束时间，向前推算</div>
+              <div className="manual-form__hint">以当前时间为起始，向后推算</div>
             </div>
           )}
 
@@ -274,7 +276,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               </section>
               <section>
                 <h4>手动记录</h4>
-                <p>点击计时页面的「手动记录」按钮，选择姓名、科目后，可精确输入起止时间或使用快速录入（输入分钟数，以当前时间回推）。</p>
+                <p>点击计时页面的「手动记录」按钮，选择姓名、科目后，可精确输入起止时间或使用快速录入（输入分钟数，以当前时间向后推算）。</p>
               </section>
               <section>
                 <h4>本地扫码同步</h4>

@@ -145,11 +145,13 @@ body {
 /* Timer page footer: manual record link + usage link */
 .timer-page__footer {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 12px;
+  justify-content: center;
+  gap: 4px;
   margin-top: 24px;
   padding-bottom: 32px;
+  flex-wrap: wrap;
 }
 
 .timer-page {
@@ -174,6 +176,8 @@ body {
   color: var(--color-text-secondary, #8B909A);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  text-align: center;
 }
 
 .usage-link:active {
@@ -202,7 +206,7 @@ body {
 .timer-panel__name {
   font-size: 18px;
   font-weight: 700;
-  color: #111111;
+  color: var(--color-primary, #1A52EE);
   white-space: nowrap;
   cursor: pointer;
   display: flex;
@@ -1854,6 +1858,11 @@ body {
 
 .ai-settings-link:active {
   opacity: 0.6;
+}
+
+.ai-settings-link--set {
+  color: var(--color-text-secondary, #8B909A);
+  font-weight: 500;
 }
 
 /* AI Analysis section on records page */

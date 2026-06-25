@@ -148,25 +148,19 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
               />
             </div>
 
-                <div className="dialog__field">
-                 <label className="dialog__label">年级</label>
-                 <div className="grade-grid">
-                   <button
-                     className={`grade-btn ${grade === 0 ? 'grade-btn--active' : ''}`}
-                     onClick={() => setGrade(0)}
-                   >
-                     全部
-                   </button>
-                   {GRADES.map(g => (
-                     <button
-                       key={g}
-                       className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
-                       onClick={() => setGrade(g)}
-                     >
-                       {g}年级
-                     </button>
-                   ))}
-                 </div>
+                 <div className="dialog__field">
+                  <label className="dialog__label">年级</label>
+                  <div className="grade-grid">
+                    {GRADES.map(g => (
+                      <button
+                        key={g}
+                        className={`grade-btn ${grade === g ? 'grade-btn--active' : ''}`}
+                        onClick={() => setGrade(g)}
+                      >
+                        {g}年级
+                      </button>
+                    ))}
+                  </div>
                </div>
 
                <div className="dialog__actions">
