@@ -154,9 +154,24 @@ interface AIAnalysisProps {
   dateTo: string
 }
 
+function downloadMd(content: string, prefix: string) {
+  const now = new Date()
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ai-analysis-${prefix}-${dateStr}.md`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysisProps) {
   const [expanded, setExpanded] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [historyList, setHistoryList] = useState<AIHistoryEntry[]>(() => getAIHistory())
   const [viewingHistory, setViewingHistory] = useState<AIHistoryEntry | null>(null)
   const { loading, error, result, analyze, abort, clearResult } = useAI()
@@ -167,7 +182,6 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
     setHistoryList(getAIHistory())
   }, [])
 
-  // Determine user info for the analysis context
   const activeUserName = useMemo(() => {
     if (!userFilter) return '全部用户'
     return userFilter
@@ -180,7 +194,30 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
     return idx >= 0 ? loadGrade(idx) : 0
   }, [userFilter])
 
-  const handleAnalyze = async () => {
+  const rangeLabel = dateFrom && dateTo
+    ? `${dateFrom} ~ ${dateTo}`
+    : dateFrom ? `${dateFrom} 至今`
+    : dateTo ? `截至 ${dateTo}`
+    : '全部时间'
+
+  const handleStartAnalysis = () => {
+    setShowHistory(false)
+    setViewingHistory(null)
+    clearResult()
+    setShowConfirm(true)
+  }
+
+  const handleConfirmAnalysis = async () => {
+    setShowConfirm(false)
+    await analyze(apiKey, records, activeUserName, activeGrade, dateFrom, dateTo)
+    refreshHistory()
+  }
+
+  const handleCancelConfirm = () => {
+    setShowConfirm(false)
+  }
+
+  const handleAnalyzeClick = () => {
     if (!apiKey) {
       alert('请先在计时页面的「AI设置」中配置 API Key')
       return
@@ -189,11 +226,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
       alert('当前筛选条件下没有记录，请调整筛选条件')
       return
     }
-    setShowHistory(false)
-    setViewingHistory(null)
-    clearResult()
-    await analyze(apiKey, records, activeUserName, activeGrade, dateFrom, dateTo)
-    refreshHistory()
+    handleStartAnalysis()
   }
 
   const handleViewHistory = (entry: AIHistoryEntry) => {
@@ -224,11 +257,10 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
 
       {expanded && (
         <div className="ai-section__body">
-          {/* Action buttons */}
           <div className="ai-section__actions">
             <button
               className="btn btn--primary btn--small"
-              onClick={handleAnalyze}
+              onClick={handleAnalyzeClick}
               disabled={loading || !hasRecords}
             >
               {loading ? '分析中...' : '🤖 AI分析'}
@@ -251,12 +283,32 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
             )}
           </div>
 
-          {/* No records warning */}
-          {!hasRecords && !result && !error && !viewingHistory && (
+          {showConfirm && (
+            <div className="ai-confirm">
+              <p className="ai-confirm__label">确认以下分析范围：</p>
+              <div className="ai-confirm__row">
+                <span className="ai-confirm__field">姓名</span>
+                <span className="ai-confirm__value">{activeUserName}</span>
+              </div>
+              <div className="ai-confirm__row">
+                <span className="ai-confirm__field">时间范围</span>
+                <span className="ai-confirm__value">{rangeLabel}</span>
+              </div>
+              <div className="ai-confirm__row">
+                <span className="ai-confirm__field">记录数</span>
+                <span className="ai-confirm__value">{records.length}条</span>
+              </div>
+              <div className="ai-confirm__actions">
+                <button className="btn btn--secondary btn--small" onClick={handleCancelConfirm}>取消</button>
+                <button className="btn btn--primary btn--small" onClick={handleConfirmAnalysis}>确认分析</button>
+              </div>
+            </div>
+          )}
+
+          {!hasRecords && !result && !error && !viewingHistory && !showConfirm && (
             <p className="ai-section__empty">当前筛选条件下没有记录</p>
           )}
 
-          {/* Loading spinner */}
           {loading && (
             <div className="ai-section__loading">
               <div className="ai-section__spinner" />
@@ -264,25 +316,25 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div className="ai-section__error">
               <p>{error}</p>
-              <button className="btn btn--small btn--primary" onClick={handleAnalyze}>重试</button>
+              <button className="btn btn--small btn--primary" onClick={handleAnalyzeClick}>重试</button>
             </div>
           )}
 
-          {/* Result */}
           {result && !viewingHistory && (
             <div className="ai-result">
               <MarkdownRenderer content={result} />
               <p className="ai-result__meta">
-                分析时间：{new Date().toLocaleString('zh-CN')} ｜ 记录数：{records.length}条
+                <span>分析时间：{new Date().toLocaleString('zh-CN')} ｜ 记录数：{records.length}条</span>
+                <span className="ai-result__meta-actions">
+                  <button className="ai-result__action" onClick={() => downloadMd(result, activeUserName)}>导出</button>
+                </span>
               </p>
             </div>
           )}
 
-          {/* History entry being viewed */}
           {viewingHistory && (
             <div className="ai-result">
               <div className="ai-section__back" onClick={handleBackToResult}>
@@ -290,13 +342,11 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
               </div>
               <MarkdownRenderer content={viewingHistory.result} />
               <p className="ai-result__meta">
-                {viewingHistory.user} ｜ {viewingHistory.dateFrom || '不限'} ~ {viewingHistory.dateTo || '不限'} ｜ {viewingHistory.recordCount}条
-                <button
-                  className="ai-result__del"
-                  onClick={() => handleDeleteHistory(viewingHistory.id)}
-                >
-                  删除
-                </button>
+                <span>{viewingHistory.user} ｜ {viewingHistory.dateFrom || '不限'} ~ {viewingHistory.dateTo || '不限'} ｜ {viewingHistory.recordCount}条</span>
+                <span className="ai-result__meta-actions">
+                  <button className="ai-result__action" onClick={() => downloadMd(viewingHistory.result, viewingHistory.user)}>导出</button>
+                  <button className="ai-result__del" onClick={() => handleDeleteHistory(viewingHistory.id)}>删除</button>
+                </span>
               </p>
             </div>
           )}

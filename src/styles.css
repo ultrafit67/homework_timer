@@ -2020,6 +2020,69 @@ body {
   padding: 2px 6px;
 }
 
+.ai-result__meta-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ai-result__action {
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+/* Confirmation card before analysis */
+.ai-confirm {
+  background: var(--color-bg);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.ai-confirm__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 12px;
+}
+
+.ai-confirm__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ai-confirm__row:last-of-type {
+  border-bottom: none;
+}
+
+.ai-confirm__field {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.ai-confirm__value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.ai-confirm__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.ai-confirm__actions .btn {
+  flex: 1;
+}
+
 /* History list */
 .ai-history-list {
   display: flex;
