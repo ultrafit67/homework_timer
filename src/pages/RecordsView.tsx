@@ -40,7 +40,10 @@ export function RecordsView() {
       const y = localDate.getFullYear()
       const m = String(localDate.getMonth() + 1).padStart(2, '0')
       const d = String(localDate.getDate()).padStart(2, '0')
-      a.download = `homework-records-${y}-${m}-${d}.json`
+      const hh = String(localDate.getHours()).padStart(2, '0')
+      const mm = String(localDate.getMinutes()).padStart(2, '0')
+      const ss = String(localDate.getSeconds()).padStart(2, '0')
+      a.download = `homework-records-${y}-${m}-${d}_${hh}${mm}${ss}.json`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -196,7 +199,11 @@ export function RecordsView() {
     const a = document.createElement('a')
     a.href = url
     const entry = backupList.find(e => e.id === id)
-    const label = entry ? entry.date : 'backup'
+    let label = 'backup'
+    if (entry) {
+      const t = new Date(entry.timestamp)
+      label = `${entry.date}_${String(t.getHours()).padStart(2, '0')}${String(t.getMinutes()).padStart(2, '0')}${String(t.getSeconds()).padStart(2, '0')}`
+    }
     a.download = `homework-auto-backup-${label}.json`
     document.body.appendChild(a)
     a.click()
