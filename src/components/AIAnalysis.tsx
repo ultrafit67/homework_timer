@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, Fragment, createElement, ReactElement } from 'react'
+import { useState, useMemo, useCallback, useRef, Fragment, createElement, ReactElement } from 'react'
 
 type TagName = 'h1' | 'h2' | 'h3' | 'h4'
 
@@ -144,8 +144,8 @@ function parseInline(text: string): (string | ReactElement)[] {
   return parts
 }
 import { HomeworkRecord } from '../types'
-import { loadUserNames, loadGrade } from '../utils'
-import { useAI, loadApiKey, getAIHistory, deleteAIHistory, AIHistoryEntry } from '../hooks/useAI'
+import { loadUserNames, loadGrade, generateId } from '../utils'
+import { useAI, loadApiKey, getAIHistory, deleteAIHistory, saveAIHistory, AIHistoryEntry } from '../hooks/useAI'
 
 interface AIAnalysisProps {
   records: HomeworkRecord[]
@@ -175,12 +175,41 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
   const [historyList, setHistoryList] = useState<AIHistoryEntry[]>(() => getAIHistory())
   const [viewingHistory, setViewingHistory] = useState<AIHistoryEntry | null>(null)
   const { loading, error, result, analyze, abort, clearResult } = useAI()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const apiKey = useMemo(() => loadApiKey(), [expanded])
 
   const refreshHistory = useCallback(() => {
     setHistoryList(getAIHistory())
   }, [])
+
+  const handleImportMd = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = reader.result as string
+      const entry: AIHistoryEntry = {
+        id: generateId(),
+        timestamp: new Date().toISOString(),
+        user: '导入',
+        grade: 0,
+        dateFrom: '',
+        dateTo: '',
+        recordCount: 0,
+        result: content
+      }
+      const history = getAIHistory()
+      history.unshift(entry)
+      saveAIHistory(history)
+      setViewingHistory(entry)
+      clearResult()
+      setShowHistory(false)
+      refreshHistory()
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }, [clearResult, refreshHistory])
 
   const activeUserName = useMemo(() => {
     if (!userFilter) return '全部用户'
@@ -271,6 +300,10 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
             >
               📋 历史记录
             </button>
+            <button className="btn btn--small" onClick={() => fileInputRef.current?.click()}>
+              📥 导入
+            </button>
+            <input ref={fileInputRef} type="file" accept=".md" style={{ display: 'none' }} onChange={handleImportMd} />
             {loading && (
               <button className="btn btn--small btn--danger" onClick={abort}>
                 停止

@@ -33,7 +33,7 @@ export function getAIHistory(): AIHistoryEntry[] {
   } catch { return [] }
 }
 
-function saveAIHistory(history: AIHistoryEntry[]): void {
+export function saveAIHistory(history: AIHistoryEntry[]): void {
   try {
     localStorage.setItem(AI_HISTORY_STORAGE, JSON.stringify(history))
   } catch {}
