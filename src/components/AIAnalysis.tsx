@@ -1,6 +1,148 @@
-import { useState, useMemo, useCallback } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import { useState, useMemo, useCallback, Fragment, createElement, ReactElement } from 'react'
+
+type TagName = 'h1' | 'h2' | 'h3' | 'h4'
+
+function MarkdownRenderer({ content }: { content: string }): ReactElement {
+  const lines = content.split('\n')
+  const elements: ReactElement[] = []
+  let inCodeBlock = false
+  let codeBuffer: string[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    if (line.startsWith('```')) {
+      if (inCodeBlock) {
+        elements.push(createElement('pre', { key: `cb-${elements.length}` },
+          createElement('code', {}, codeBuffer.join('\n'))
+        ))
+        codeBuffer = []
+        inCodeBlock = false
+      } else {
+        inCodeBlock = true
+      }
+      continue
+    }
+
+    if (inCodeBlock) {
+      codeBuffer.push(line)
+      continue
+    }
+
+    if (/^---+$/.test(line.trim())) {
+      elements.push(createElement('hr', { key: `hr-${elements.length}` }))
+      continue
+    }
+
+    if (line.trim() === '') continue
+
+    const hMatch = line.match(/^(#{1,4})\s+(.+)/)
+    if (hMatch) {
+      const level = hMatch[1].length
+      const tags: TagName[] = ['h1', 'h2', 'h3', 'h4']
+      elements.push(createElement(tags[level - 1], { key: `h-${elements.length}` },
+        parseInline(hMatch[2])
+      ))
+      continue
+    }
+
+    const ulMatch = line.match(/^[-*+]\s+(.+)/)
+    if (ulMatch) {
+      elements.push(createElement('li', { key: `li-${elements.length}`, style: { listStyle: 'disc' } },
+        parseInline(ulMatch[1])
+      ))
+      continue
+    }
+
+    const olMatch = line.match(/^\d+\.\s+(.+)/)
+    if (olMatch) {
+      elements.push(createElement('li', { key: `li-${elements.length}`, style: { listStyle: 'decimal' } },
+        parseInline(olMatch[1])
+      ))
+      continue
+    }
+
+    elements.push(createElement('p', { key: `p-${elements.length}` },
+      parseInline(line)
+    ))
+  }
+
+  if (inCodeBlock && codeBuffer.length > 0) {
+    elements.push(createElement('pre', { key: `cb-${elements.length}` },
+      createElement('code', {}, codeBuffer.join('\n'))
+    ))
+  }
+
+  return createElement(Fragment, {}, ...elements)
+}
+
+interface MatchResult {
+  index: number
+  length: number
+  render: () => ReactElement
+}
+
+function findEarliest(text: string, parts: (string | ReactElement)[]): MatchResult | null {
+  const boldMatch = text.match(/\*\*(.+?)\*\*/)
+  const codeMatch = text.match(/`([^`]+)`/)
+  const linkMatch = text.match(/\[([^\]]+)\]\(([^)]+)\)/)
+
+  const candidates: MatchResult[] = []
+
+  if (boldMatch && boldMatch.index !== undefined) {
+    const idx = boldMatch.index
+    const content = boldMatch[1]
+    candidates.push({
+      index: idx,
+      length: boldMatch[0].length,
+      render: () => createElement('strong', { key: `b-${parts.length}` }, content)
+    })
+  }
+  if (codeMatch && codeMatch.index !== undefined) {
+    const idx = codeMatch.index
+    const content = codeMatch[1]
+    candidates.push({
+      index: idx,
+      length: codeMatch[0].length,
+      render: () => createElement('code', { key: `c-${parts.length}` }, content)
+    })
+  }
+  if (linkMatch && linkMatch.index !== undefined) {
+    const idx = linkMatch.index
+    const content = linkMatch[1]
+    const href = linkMatch[2]
+    candidates.push({
+      index: idx,
+      length: linkMatch[0].length,
+      render: () => createElement('a', { key: `a-${parts.length}`, href, target: '_blank', rel: 'noopener noreferrer' }, content)
+    })
+  }
+
+  if (candidates.length === 0) return null
+
+  return candidates.reduce((earliest, c) => c.index < earliest.index ? c : earliest)
+}
+
+function parseInline(text: string): (string | ReactElement)[] {
+  const parts: (string | ReactElement)[] = []
+  let remaining = text
+
+  while (remaining.length > 0) {
+    const earliest = findEarliest(remaining, parts)
+    if (earliest) {
+      if (earliest.index > 0) {
+        parts.push(remaining.slice(0, earliest.index))
+      }
+      parts.push(earliest.render())
+      remaining = remaining.slice(earliest.index + earliest.length)
+    } else {
+      parts.push(remaining)
+      break
+    }
+  }
+
+  return parts
+}
 import { HomeworkRecord } from '../types'
 import { loadUserNames, loadGrade } from '../utils'
 import { useAI, loadApiKey, getAIHistory, deleteAIHistory, AIHistoryEntry } from '../hooks/useAI'
@@ -133,9 +275,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
           {/* Result */}
           {result && !viewingHistory && (
             <div className="ai-result">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {result}
-              </ReactMarkdown>
+              <MarkdownRenderer content={result} />
               <p className="ai-result__meta">
                 分析时间：{new Date().toLocaleString('zh-CN')} ｜ 记录数：{records.length}条
               </p>
@@ -148,9 +288,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
               <div className="ai-section__back" onClick={handleBackToResult}>
                 ← 返回
               </div>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {viewingHistory.result}
-              </ReactMarkdown>
+              <MarkdownRenderer content={viewingHistory.result} />
               <p className="ai-result__meta">
                 {viewingHistory.user} ｜ {viewingHistory.dateFrom || '不限'} ~ {viewingHistory.dateTo || '不限'} ｜ {viewingHistory.recordCount}条
                 <button
