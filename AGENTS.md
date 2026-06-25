@@ -69,7 +69,7 @@ src/
 - **Auto-backup**: each record addition triggers a full backup to localStorage (`homework-backup`); restore button on Records page
 - **Subject colors/icons**: `SUBJECT_COLORS` + `SUBJECT_ICONS` in types.ts, applied to buttons, records, stats bars, and trend chart
 - **LAN P2P sync**: QR-based WebRTC sync between two devices on same LAN, no server required
-- **AI analysis** (DeepSeek): API key config on timer page; collapsible analysis section on records page, triggered with current filter; markdown result with custom lightweight renderer (no deps); history saved to localStorage (last 20)
+- **AI analysis** (DeepSeek): API key config on timer page; analysis section on records page, triggered with current filter; markdown result with custom lightweight renderer (no deps); history saved to localStorage (last 20)
 - **Export/Import with config**: JSON export includes user names + grades in versioned wrapper; import compatible with old format
 - **User config reset**: config dialog has "重置默认值" button to reset name/grade to defaults
 - **Clear all records**: "清除所有记录" button on Records page with confirmation dialog, permanently removes all records from IndexedDB
@@ -118,7 +118,7 @@ src/
 - `useAI` hook handles API call (`POST https://api.deepseek.com/v1/chat/completions`), loading/error state, AbortController for cancellation
 - Prompt includes: user name, grade, time range, per-subject totals/duration/count, daily trend data
 - Results rendered with custom `MarkdownRenderer` (no dependencies) — handles headings, bold, inline code, links, code blocks, lists, horizontal rules
-- History saved to `localStorage` (`homework-ai-history`), last 20 entries, viewable/ deletable in collapsible list
+- History saved to `localStorage` (`homework-ai-history`), last 20 entries, viewable/deletable in toggleable list
 - Bundle impact: ~9KB (custom renderer only, no unified/remark/rehype dependency chain)
 
 ## LAN sync (P2P WebRTC, no server)

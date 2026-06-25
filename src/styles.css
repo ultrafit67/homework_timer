@@ -1863,26 +1863,6 @@ body {
   padding-top: 8px;
 }
 
-.ai-section__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  padding: 8px 0;
-  user-select: none;
-}
-
-.ai-section__title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.ai-section__toggle {
-  font-size: 12px;
-  color: var(--color-text-secondary);
-}
-
 .ai-section__body {
   padding: 8px 0 16px;
 }
@@ -1892,6 +1872,7 @@ body {
   gap: 8px;
   margin-bottom: 12px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .ai-section__loading {

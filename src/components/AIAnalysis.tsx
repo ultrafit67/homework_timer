@@ -210,7 +210,6 @@ function parseImportMd(text: string): { content: string; meta: Partial<ExportMet
 }
 
 export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysisProps) {
-  const [expanded, setExpanded] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [importDup, setImportDup] = useState<{ user: string; dateFrom: string; dateTo: string; recordCount: number } | null>(null)
@@ -219,7 +218,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
   const { loading, error, result, analyze, abort, clearResult } = useAI()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const apiKey = useMemo(() => loadApiKey(), [expanded])
+  const apiKey = useMemo(() => loadApiKey(), [])
 
   const refreshHistory = useCallback(() => {
     setHistoryList(getAIHistory())
@@ -327,13 +326,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
 
   return (
     <div className="ai-section">
-      <div className="ai-section__header" onClick={() => setExpanded(!expanded)}>
-        <span className="ai-section__title">AI 分析</span>
-        <span className="ai-section__toggle">{expanded ? '收起' : '展开'}</span>
-      </div>
-
-      {expanded && (
-        <div className="ai-section__body">
+      <div className="ai-section__body">
           <div className="ai-section__actions">
             <button
               className="btn btn--primary btn--small"
@@ -479,7 +472,6 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
             </div>
           )}
         </div>
-      )}
     </div>
   )
 }

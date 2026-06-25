@@ -282,7 +282,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               </section>
               <section>
                 <h4>AI 分析</h4>
-                <p>先点击计时页面底部的「AI设置」，输入 DeepSeek API Key 并保存。然后在「记录」页面展开「AI 分析」区域，筛选好姓名和时间范围后，点击「AI分析」按钮，确认后即可获得学习时间分布、趋势分析和效率建议。分析结果可导出为 Markdown 文件，也可从历史记录中查看或导入之前导出的文件。</p>
+                <p>先点击计时页面底部的「AI设置」，输入 DeepSeek API Key 并保存。然后在「记录」页面找到「AI 分析」区域，筛选好姓名和时间范围后，点击「AI分析」按钮，确认后即可获得学习时间分布、趋势分析和效率建议。分析结果可导出为 Markdown 文件，也可从历史记录中查看或导入之前导出的文件。</p>
               </section>
               <section>
                 <h4>数据导入/导出</h4>
