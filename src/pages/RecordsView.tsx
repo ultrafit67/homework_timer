@@ -1,11 +1,18 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import * as db from '../db'
 import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS, getSubjectsForGrade } from '../types'
-import { loadUserNames, saveUserName, loadGrade, saveGrade } from '../utils'
+import {
+  loadUserNames, saveUserName, loadGrade, saveGrade, generateId,
+  getAutoBackupConfig, saveAutoBackupConfig,
+  getBackupList, addBackup, deleteBackup, cleanOldBackups, loadBackupData,
+  AutoBackupConfig, BackupEntry,
+  loadDirHandle, persistDirHandle, saveBackupDirName, getBackupDirName,
+  writeBackupToDir, cleanOldBackupFiles, supportsFileSystemAPI
+} from '../utils'
 
 const PAGE_SIZE = 20
 
@@ -113,6 +120,93 @@ export function RecordsView() {
       setImportMsg('清除失败')
       console.error('清除记录失败', e)
     }
+  }
+
+  // Auto backup
+  const [backupConfig, setBackupConfig] = useState<AutoBackupConfig>(() => getAutoBackupConfig())
+  const [backupList, setBackupList] = useState<BackupEntry[]>(() => getBackupList())
+  const [backupMsg, setBackupMsg] = useState<string | null>(null)
+  const [backupExpanded, setBackupExpanded] = useState(false)
+  const [backupDir, setBackupDir] = useState<string>(() => getBackupDirName())
+  const [backupDirHandle, setBackupDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
+
+  // Restore directory handle on mount
+  useEffect(() => {
+    loadDirHandle().then(handle => {
+      if (handle) {
+        setBackupDirHandle(handle)
+        setBackupDir(getBackupDirName())
+      }
+    })
+  }, [])
+
+  const refreshBackupList = () => setBackupList(getBackupList())
+
+  const handleSelectBackupDir = async () => {
+    try {
+      const parentHandle = await (window as any).showDirectoryPicker({ startIn: 'desktop', mode: 'readwrite' })
+      // Create a dedicated subfolder for backups
+      let dirHandle: FileSystemDirectoryHandle
+      try {
+        dirHandle = await parentHandle.getDirectoryHandle('homework-timer-backup', { create: true })
+      } catch {
+        dirHandle = parentHandle
+      }
+      await persistDirHandle(dirHandle)
+      setBackupDirHandle(dirHandle)
+      saveBackupDirName(`homework-timer-backup (${parentHandle.name})`)
+      setBackupDir(`homework-timer-backup (${parentHandle.name})`)
+      setBackupMsg(`已选择备份目录：${parentHandle.name}/homework-timer-backup`)
+    } catch (e) {
+      if ((e as DOMException).name !== 'AbortError') {
+        setBackupMsg('选择失败，请先在桌面新建一个空文件夹（如「作业备份」），再选择它')
+      }
+    }
+  }
+
+  const handleBackupNow = async () => {
+    setBackupMsg(null)
+    try {
+      const all = await db.getAllRecords()
+      const names = loadUserNames()
+      const grades = [loadGrade(0), loadGrade(1)]
+      const data = { version: 2, records: all, userNames: names, userGrades: grades }
+      const id = generateId()
+      const timestamp = new Date().toISOString()
+      const json = JSON.stringify(data)
+      addBackup(id, timestamp, json)
+      cleanOldBackups(backupConfig.keepCount)
+      // Also write to filesystem if directory selected
+      if (backupDirHandle) {
+        await writeBackupToDir(backupDirHandle, id, timestamp, json)
+        await cleanOldBackupFiles(backupDirHandle, backupConfig.keepCount)
+      }
+      refreshBackupList()
+      setBackupMsg('备份成功')
+    } catch (e) {
+      setBackupMsg('备份失败：' + ((e as Error).message || ''))
+    }
+  }
+
+  const handleDownloadBackup = (id: string) => {
+    const raw = loadBackupData(id)
+    if (!raw) return
+    const blob = new Blob([raw], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const entry = backupList.find(e => e.id === id)
+    const label = entry ? entry.date : 'backup'
+    a.download = `homework-auto-backup-${label}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDeleteBackup = (id: string) => {
+    deleteBackup(id)
+    refreshBackupList()
   }
 
   // Filter subjects by selected user's grade
@@ -246,6 +340,78 @@ export function RecordsView() {
         <button className="btn btn--text" onClick={handleRestore}>从备份恢复</button>
         <button className="btn btn--text btn--text-danger" onClick={() => setShowClearConfirm(true)}>清除所有记录</button>
         {importMsg && <p className="data-io__msg">{importMsg}</p>}
+      </div>
+
+      <div className="auto-backup">
+        <div className="auto-backup__header" onClick={() => setBackupExpanded(!backupExpanded)}>
+          <span className="auto-backup__title">自动备份</span>
+          <span className="auto-backup__toggle">{backupExpanded ? '收起' : backupConfig.enabled ? '已开启' : '已关闭'}</span>
+        </div>
+        <div className="auto-backup__body" style={{ display: backupExpanded ? 'block' : 'none' }}>
+          <div className="auto-backup__row">
+            <label className="auto-backup__label">启用</label>
+            <label className="auto-backup__switch">
+              <input type="checkbox" checked={backupConfig.enabled} onChange={e => {
+                const next = { ...backupConfig, enabled: e.target.checked }
+                setBackupConfig(next)
+                saveAutoBackupConfig(next)
+              }} />
+              <span className="auto-backup__slider" />
+            </label>
+          </div>
+          <div className="auto-backup__row">
+            <label className="auto-backup__label">备份时间</label>
+            <input type="time" className="auto-backup__input" value={backupConfig.time} onChange={e => {
+              const next = { ...backupConfig, time: e.target.value }
+              setBackupConfig(next)
+              saveAutoBackupConfig(next)
+            }} />
+          </div>
+          <div className="auto-backup__row">
+            <label className="auto-backup__label">保留份数</label>
+            <input type="number" className="auto-backup__input auto-backup__input--narrow" min={1} max={100} value={backupConfig.keepCount} onChange={e => {
+              const next = { ...backupConfig, keepCount: Math.max(1, parseInt(e.target.value) || 1) }
+              setBackupConfig(next)
+              saveAutoBackupConfig(next)
+            }} />
+          </div>
+          <div className="auto-backup__row">
+            <label className="auto-backup__label">备份目录</label>
+            {backupDir ? (
+              <span className="auto-backup__dir-name">{backupDir}</span>
+            ) : supportsFileSystemAPI() ? (
+              <span className="auto-backup__dir-hint">未设置</span>
+            ) : (
+              <span className="auto-backup__dir-hint">浏览器不支持</span>
+            )}
+          </div>
+          {supportsFileSystemAPI() && (
+            <div className="auto-backup__center">
+              <button className="btn btn--text" onClick={handleSelectBackupDir}>
+                {backupDir ? '更换备份目录' : '选择备份目录'}
+              </button>
+              {!backupDir && (
+                <p className="auto-backup__dir-tip">提示：请先在桌面新建一个空文件夹</p>
+              )}
+            </div>
+          )}
+          <div className="auto-backup__center">
+            <button className="btn btn--text" onClick={handleBackupNow}>立即备份</button>
+          </div>
+          {backupMsg && <p className="auto-backup__msg">{backupMsg}</p>}
+          {backupList.length > 0 && (
+            <div className="auto-backup__list">
+              {[...backupList].sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map(e => (
+                <div key={e.id} className="auto-backup__item">
+                  <span className="auto-backup__item-date">{e.date}</span>
+                  <span className="auto-backup__item-time">{new Date(e.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <button className="auto-backup__item-dl" onClick={() => handleDownloadBackup(e.id)}>下载</button>
+                  <button className="auto-backup__item-del" onClick={() => handleDeleteBackup(e.id)}>删除</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog

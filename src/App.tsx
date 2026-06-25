@@ -7,9 +7,14 @@ import { RecordsView } from './pages/RecordsView'
 import { SyncSettings } from './components/SyncSettings'
 import { LocalSync } from './components/LocalSync'
 import { useRecords } from './hooks/useRecords'
-import { backupAllRecords } from './db'
+import { backupAllRecords, getAllRecords } from './db'
 import { HomeworkRecord } from './types'
 import { isSyncEnabled, startSync, stopSync, getStatus, setStatusCallback, syncPushRecord } from './sync'
+import {
+  getAutoBackupConfig, generateId, addBackup, cleanOldBackups, hasBackupToday, getBackupList,
+  loadUserNames, loadGrade,
+  loadDirHandle, writeBackupToDir, cleanOldBackupFiles
+} from './utils'
 
 const SYNC_DOT_COLORS: Record<string, string> = {
   closed: '#9CA3AF',
@@ -35,6 +40,41 @@ function AppContent() {
       stopSync().catch(() => {})
       setStatusCallback(null)
     }
+  }, [])
+
+  // Auto-backup trigger: check every 30 seconds
+  useEffect(() => {
+    let dirHandle: FileSystemDirectoryHandle | null = null
+    loadDirHandle().then(h => { dirHandle = h })
+
+    const check = async () => {
+      const config = getAutoBackupConfig()
+      if (!config.enabled) return
+      if (hasBackupToday(getBackupList())) return
+      const now = new Date()
+      const currentMin = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      if (currentMin < config.time) return
+      try {
+        const all = await getAllRecords()
+        const names = loadUserNames()
+        const grades = [loadGrade(0), loadGrade(1)]
+        const data = { version: 2, records: all, userNames: names, userGrades: grades }
+        const id = generateId()
+        const timestamp = new Date().toISOString()
+        const json = JSON.stringify(data)
+        addBackup(id, timestamp, json)
+        cleanOldBackups(config.keepCount)
+        if (dirHandle) {
+          await writeBackupToDir(dirHandle, id, timestamp, json)
+          await cleanOldBackupFiles(dirHandle, config.keepCount)
+        }
+      } catch (e) {
+        console.warn('[AutoBackup] Failed', e)
+      }
+    }
+    const id = setInterval(check, 30000)
+    check()
+    return () => clearInterval(id)
   }, [])
 
   const onRecordAdded = useCallback(async (record?: HomeworkRecord) => {
