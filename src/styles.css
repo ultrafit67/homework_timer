@@ -149,15 +149,11 @@ body {
   align-items: center;
   gap: 12px;
   margin-top: 24px;
-  padding-bottom: 8px;
-  flex: 1;
-  justify-content: flex-end;
+  padding-bottom: 32px;
 }
 
 .timer-page {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100vh - var(--nav-height) - 40px);
+  padding-bottom: 80px;
 }
 
 .manual-link {
