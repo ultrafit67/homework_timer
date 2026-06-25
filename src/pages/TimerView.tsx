@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
+import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
 
@@ -31,6 +32,7 @@ function calcDurationSeconds(start: string, end: string): number {
 export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [showManual, setShowManual] = useState(false)
   const [showUsage, setShowUsage] = useState(false)
+  const [showApiKey, setShowApiKey] = useState(false)
   const [users, setUsers] = useState<string[]>(() => loadUserNames())
   const [manualUserIdx, setManualUserIdx] = useState<number>(0)
   const [manualSubject, setManualSubject] = useState<Subject | null>(null)
@@ -152,6 +154,9 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <span className="manual-link" onClick={handleOpenManual}>
               手动记录
             </span>
+            <span className="ai-settings-link" onClick={() => setShowApiKey(true)}>
+              AI设置
+            </span>
             <span className="usage-link" onClick={() => setShowUsage(true)}>
               遇到问题？查看使用方法
             </span>
@@ -255,6 +260,8 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
           </div>
         </div>
       )}
+
+      <ApiKeyDialog open={showApiKey} onClose={() => setShowApiKey(false)} />
 
       {showUsage && (
         <div className="dialog-overlay" onClick={() => setShowUsage(false)}>

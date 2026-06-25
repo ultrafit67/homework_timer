@@ -3,6 +3,7 @@ import { useRecords } from '../hooks/useRecords'
 import { RecordItem } from '../components/RecordItem'
 import { EditRecordDialog } from '../components/EditRecordDialog'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { AIAnalysis } from '../components/AIAnalysis'
 import * as db from '../db'
 import { SUBJECTS, Subject, HomeworkRecord, SUBJECT_COLORS, getSubjectsForGrade } from '../types'
 import {
@@ -296,6 +297,13 @@ export function RecordsView() {
           <button className="date-range__clear" onClick={() => { setDateFrom(''); setDateTo(''); setPage(0) }}>清除</button>
         )}
       </div>
+
+      <AIAnalysis
+        records={dateFilteredRecords}
+        userFilter={userFilter}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+      />
 
       {pageRecords.length === 0 ? (
         <p className="empty-text">暂无记录</p>
