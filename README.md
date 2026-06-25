@@ -15,6 +15,7 @@
 - **记录管理** — 按用户/科目筛选，编辑/删除，日期范围过滤，数据导入导出（含名字/年级配置）
 - **PWA** — 可安装到手机桌面，离线可用
 - **局域网同步** — 两台设备在同一 WiFi 下通过扫码配对，直接 P2P 交换数据，无需服务器
+- **AI 分析** — 接入 DeepSeek API，基于当前筛选的时间范围和用户，分析学习时间分布、趋势和效率建议，结果以 Markdown 展示并保存历史
 
 ## 技术栈
 
@@ -24,7 +25,7 @@
 | 构建 | Vite 6 |
 | 路由 | React Router v6 |
 | 数据库 | IndexedDB (via `idb` v8) |
-| 云数据库 | 腾讯云 CloudBase (可选，通过 `@cloudbase/js-sdk`) |
+| AI | DeepSeek API (自定义 Markdown 渲染器，无外部依赖) |
 | PWA | `vite-plugin-pwa` (Workbox) |
 | 样式 | 纯 CSS，移动优先，BEM 命名 |
 
@@ -46,14 +47,15 @@ src/
   db.ts            — IndexedDB 封装（单例，惰性迁移，软删除）
   cloudbase.ts     — 腾讯云 CloudBase SDK 初始化 + 匿名登录
   sync.ts          — 云同步服务（推送/拉取/待处理队列/轮询）
-  hooks/
-    useTimer.ts    — 计时器状态机
-    useRecords.ts  — 记录 CRUD + 统计计算，触发同步
-    useLocalSync.ts — 局域网 P2P 同步（WebRTC）
-  components/      — TimerPanel, SubjectButton, LocalSync, 对话框, SyncSettings
-  pages/           — Timer, Stats, Records 三个标签页
-  App.tsx          — 路由 + 底部导航 + 同步初始化 + 状态指示器
-  styles.css       — 全局样式
+   hooks/
+     useTimer.ts    — 计时器状态机
+     useRecords.ts  — 记录 CRUD + 统计计算，触发同步
+     useLocalSync.ts — 局域网 P2P 同步（WebRTC）
+     useAI.ts       — DeepSeek API 调用 hook，loading/error 状态，历史管理
+   components/      — TimerPanel, SubjectButton, LocalSync, ApiKeyDialog, AIAnalysis, 对话框
+   pages/           — Timer, Stats, Records 三个标签页
+   App.tsx          — 路由 + 底部导航 + 同步初始化 + 状态指示器
+   styles.css       — 全局样式
 ```
 
 ## 部署

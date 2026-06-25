@@ -10,18 +10,21 @@ src/
   utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats,
                      loadGrade, saveGrade, loadUserNames, saveUserName, auto-backup
   db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
-  hooks/
-    useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
-    useRecords.ts  — CRUD + computed stats + user/subject filter
-    useLocalSync.ts — LAN P2P sync via WebRTC (two-QR handshake, data channel exchange)
-  components/
-    TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade, reset defaults)
-    SubjectButton, TimerDisplay, ConfirmDialog
-    RecordItem, EditRecordDialog
-    LocalSync.tsx  — LAN sync UI: QR scanner/generator, camera, self-test, sync status
-  pages/           — TimerView, StatsView, RecordsView (tab content)
-  App.tsx          — BrowserRouter + Routes + BottomNav + sync status indicator
-  styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
+   hooks/
+     useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
+     useRecords.ts  — CRUD + computed stats + user/subject filter
+     useLocalSync.ts — LAN P2P sync via WebRTC (two-QR handshake, data channel exchange)
+     useAI.ts       — DeepSeek API call hook, loading/error state, history management
+   components/
+     TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade, reset defaults)
+     SubjectButton, TimerDisplay, ConfirmDialog
+     RecordItem, EditRecordDialog
+     LocalSync.tsx  — LAN sync UI: QR scanner/generator, camera, self-test, sync status
+     ApiKeyDialog.tsx — DeepSeek API Key config dialog (on timer page)
+     AIAnalysis.tsx  — AI analysis section (on records page): trigger, result render, history list
+   pages/           — TimerView, StatsView, RecordsView (tab content)
+   App.tsx          — BrowserRouter + Routes + BottomNav + sync status indicator
+   styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
 ```
 
 ## Critical gotchas
@@ -30,7 +33,6 @@ src/
 - **`idb` v8 upgrade callback must NOT be async.** `openDB` resolves on `onsuccess` immediately after `onupgradeneeded` returns — it does NOT wait for async operations inside the callback. DB migrations must be done lazily after `getDb()` resolves (see `db.ts:migrateRecords()`).
 - **`crypto.randomUUID()` fallback.** `generateId()` in `utils.ts` falls back to `Date.now() + Math.random()` if `crypto.randomUUID` is unavailable.
 - **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
-- **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 - **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 - **Timer state persisted to `sessionStorage`.** Timer state (status, selectedSubject, accruedMs, timingStart) is saved to `sessionStorage` on every change and restored on mount. This survives page refresh/reload. Keyed by `userName` (`timer-state-{userName}`). Cleared on complete/reset. This means the timer survives browser tab restorations that trigger a page reload.
 
@@ -67,6 +69,7 @@ src/
 - **Auto-backup**: each record addition triggers a full backup to localStorage (`homework-backup`); restore button on Records page
 - **Subject colors/icons**: `SUBJECT_COLORS` + `SUBJECT_ICONS` in types.ts, applied to buttons, records, stats bars, and trend chart
 - **LAN P2P sync**: QR-based WebRTC sync between two devices on same LAN, no server required
+- **AI analysis** (DeepSeek): API key config on timer page; collapsible analysis section on records page, triggered with current filter; markdown result with custom lightweight renderer (no deps); history saved to localStorage (last 20)
 - **Export/Import with config**: JSON export includes user names + grades in versioned wrapper; import compatible with old format
 - **User config reset**: config dialog has "重置默认值" button to reset name/grade to defaults
 - **Clear all records**: "清除所有记录" button on Records page with confirmation dialog, permanently removes all records from IndexedDB
@@ -107,6 +110,16 @@ src/
 - Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
 - Soft delete: `deleteRecord()` sets `deleted: true` instead of removing; `getAllRecords()` filters out deleted; `getAllRecordsForSync()` returns all including deleted (for sync)
 - CloudBase collection: `homework_records`, document `_id` = record `id`
+
+## AI analysis (DeepSeek)
+
+- API key config on timer page via `ApiKeyDialog`; key stored in `localStorage` (`homework-ai-key`)
+- Collapsible analysis section on records page via `AIAnalysis.tsx`, inserted between date filter and record list
+- `useAI` hook handles API call (`POST https://api.deepseek.com/v1/chat/completions`), loading/error state, AbortController for cancellation
+- Prompt includes: user name, grade, time range, per-subject totals/duration/count, daily trend data
+- Results rendered with custom `MarkdownRenderer` (no dependencies) — handles headings, bold, inline code, links, code blocks, lists, horizontal rules
+- History saved to `localStorage` (`homework-ai-history`), last 20 entries, viewable/ deletable in collapsible list
+- Bundle impact: ~9KB (custom renderer only, no unified/remark/rehype dependency chain)
 
 ## LAN sync (P2P WebRTC, no server)
 
