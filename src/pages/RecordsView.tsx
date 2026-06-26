@@ -290,9 +290,14 @@ export function RecordsView() {
       </div>
 
       <div className="date-range">
-        <input type="date" className="date-range__input" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0) }} />
-        <span className="date-range__sep">~</span>
-        <input type="date" className="date-range__input" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0) }} />
+        <span className="date-range__field">
+          <span className="date-range__label">开始</span>
+          <input type="date" required className="date-range__input" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(0) }} />
+        </span>
+        <span className="date-range__field">
+          <span className="date-range__label">结束</span>
+          <input type="date" required className="date-range__input" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(0) }} />
+        </span>
         {(dateFrom || dateTo) && (
           <button className="date-range__clear" onClick={() => { setDateFrom(''); setDateTo(''); setPage(0) }}>清除</button>
         )}

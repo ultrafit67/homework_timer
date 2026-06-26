@@ -818,26 +818,49 @@ body {
 .date-range {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 12px;
+}
+
+.date-range__field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.date-range__label {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .date-range__input {
   flex: 1;
+  min-width: 0;
   padding: 6px 10px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   font-size: 14px;
   background: var(--color-bg);
   color: var(--color-text);
-  min-width: 0;
+  box-sizing: border-box;
 }
 
-.date-range__sep {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  flex-shrink: 0;
+/* Hide native date placeholder (年/月/日) when empty */
+.date-range__input[type="date"]::-webkit-datetime-edit {
+  color: transparent;
 }
+.date-range__input[type="date"]:focus::-webkit-datetime-edit {
+  color: var(--color-text);
+}
+.date-range__input[type="date"]:valid::-webkit-datetime-edit {
+  color: var(--color-text);
+}
+
+
 
 .date-range__clear {
   border: none;
