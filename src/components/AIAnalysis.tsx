@@ -212,6 +212,8 @@ function parseImportMd(text: string): { content: string; meta: Partial<ExportMet
 export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysisProps) {
   const [showHistory, setShowHistory] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [showNoApiKey, setShowNoApiKey] = useState(false)
+  const [showNoRecords, setShowNoRecords] = useState(false)
   const [importDup, setImportDup] = useState<{ user: string; dateFrom: string; dateTo: string; recordCount: number } | null>(null)
   const [historyList, setHistoryList] = useState<AIHistoryEntry[]>(() => getAIHistory())
   const [viewingHistory, setViewingHistory] = useState<AIHistoryEntry | null>(null)
@@ -295,11 +297,11 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
 
   const handleAnalyzeClick = () => {
     if (!apiKey) {
-      alert('请先在计时页面的「AI设置」中配置 API Key')
+      setShowNoApiKey(true)
       return
     }
     if (records.length === 0) {
-      alert('当前筛选条件下没有记录，请调整筛选条件')
+      setShowNoRecords(true)
       return
     }
     handleStartAnalysis()
@@ -356,6 +358,30 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
               </button>
             )}
           </div>
+
+          {showNoApiKey && (
+            <div className="ai-confirm">
+              <p className="ai-confirm__label">未配置 API Key</p>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                请先在计时页面的「AI设置」中配置 API Key
+              </p>
+              <div className="ai-confirm__actions">
+                <button className="btn btn--primary btn--small" onClick={() => setShowNoApiKey(false)}>确定</button>
+              </div>
+            </div>
+          )}
+
+          {showNoRecords && (
+            <div className="ai-confirm">
+              <p className="ai-confirm__label">暂无记录</p>
+              <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', marginBottom: '12px' }}>
+                当前筛选条件下没有记录，请调整筛选条件
+              </p>
+              <div className="ai-confirm__actions">
+                <button className="btn btn--primary btn--small" onClick={() => setShowNoRecords(false)}>确定</button>
+              </div>
+            </div>
+          )}
 
           {showConfirm && (
             <div className="ai-confirm">
