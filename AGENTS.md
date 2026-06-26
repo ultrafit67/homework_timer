@@ -67,7 +67,8 @@ src/
 - **SVG trend chart** in Stats page: line chart showing daily/weekly duration trends per subject
 - **Manual form quick entry**: toggle between exact datetime input and minutes-based quick entry (auto-calculates start from current time)
 - **Date range filter** on Records page: filter records by date range with start/end date pickers
-- **Auto-backup**: each record addition triggers a full backup to localStorage (`homework-backup`); restore button on Records page
+- **Pomodoro timer**: toggle on TimerPanel switches between 普通/番茄钟; PomodoroTimer component with presets (25+5, 45+10, 50+10), countdown + progress bar, notification/vibration/beep on phase change, auto-saves record on focus complete, auto-loop (focus→break→next focus)
+- **Auto-backup dual system**: `db.backupAllRecords()` saves to `homework-backup` (for "从备份恢复" button); auto-backup in `utils.ts` saves to `homework-backup-{id}` entries + optional File System API directory write. On mount backup ensures restore key always exists. Permission re-check (queryPermission/requestPermission) before File System writes to handle stale handles across page reloads. Race-condition guard: re-checks `hasBackupToday()` after async `getAllRecords()` to prevent duplicate backups.
 - **Subject colors/icons**: `SUBJECT_COLORS` + `SUBJECT_ICONS` in types.ts, applied to buttons, records, stats bars, and trend chart
 - **LAN P2P sync**: QR-based WebRTC sync between two devices on same LAN, no server required
 - **AI analysis** (DeepSeek): API key config on timer page; analysis section on records page, triggered with current filter; markdown result with custom lightweight renderer (no deps); history saved to localStorage (last 20)
@@ -87,6 +88,23 @@ src/
 - `timer.complete()` returns a `HomeworkRecord` (without saving — caller handles `addRecord`).
 - `timer.pause()`, `timer.resume()` toggle the paused state.
 - Timer display shows pulsing animation when paused.
+
+## Pomodoro state machine (`usePomodoro.ts`)
+
+| Phase | Meaning | Buttons shown |
+|---|---|---|
+| `idle` | No subject selected | (none — subject grid visible) |
+| `subjectSelected` | Subject chosen | 开始专注 |
+| `focusing` | Countdown running | 暂停/继续 + 结束 |
+| `break` | Break countdown running | 暂停/继续 + 跳过休息 |
+
+- `usePomodoro(storageKey)` persists state to `sessionStorage` keyed by `pomodoro-{userIndex}`.
+- Deadlines are restored from `sessionStorage` for accurate remaining time across page reloads.
+- `onFocusComplete()` callback auto-saves a `HomeworkRecord` with `addRecord()`.
+- Notification (Web Notification API) + vibration + audio beep on phase transitions (subject to browser support).
+- Three presets: 25+5, 45+10, 50+10 minutes (focus+break). Duration toggle disabled while running.
+- Cycle counter: increments each full focus→break→focus loop.
+- Progress bar shows fraction of current phase elapsed.
 
 ## Compact layout (timer page)
 
@@ -110,7 +128,6 @@ src/
 - `db.ts` exports: `addRecord`, `getRecordsByDate`, `getRecordsInRange`, `getAllRecords`, `deleteRecord`, `updateRecord`, `importRecords`, `getDateGroups`, `renameUserRecords`, `backupAllRecords`, `restoreFromBackup`, `getAllRecordsForSync`, `hardDeleteRecord`, `upsertRecords`, `clearAllRecords`
 - Lazy migration in `getAllRecords()`: subject rename (v1→v2), default user assignment (v2→v3)
 - Soft delete: `deleteRecord()` sets `deleted: true` instead of removing; `getAllRecords()` filters out deleted; `getAllRecordsForSync()` returns all including deleted (for sync)
-- CloudBase collection: `homework_records`, document `_id` = record `id`
 
 ## AI analysis (DeepSeek)
 
@@ -176,5 +193,7 @@ src/
 - User names are stored per-index in localStorage (`homework-name-0/1`). Renaming a user in the config dialog **auto-updates** all existing IndexedDB records for that user (via `renameUserRecords()` in `db.ts`).
 - **TimerPanel** receives `userName` as prop + `userIndex` (0/1) for localStorage key access; grade is stored by index, name is overridable.
 - **Config dialog reset**: "重置默认值" calls `saveUserName(i, USERS[i])` + `saveGrade(i, 0)`.
+- **TimerPanel** mode toggle (普通/番茄钟) persisted to `sessionStorage` (`timer-mode-{userIndex}`), restored on mount.
+- **Auto-backup** uses two mechanisms: `db.backupAllRecords()` saves to `homework-backup` localStorage key for "从备份恢复"; auto-backup in `utils.ts` saves to `homework-backup-{id}` entries + optional File System directory. Permission re-check required before File System writes across sessions.
 - **LAN sync** requires HTTPS (camera access). Dev server uses `@vitejs/plugin-basic-ssl`.
 - **Data channel message buffering**: `dc.onmessage` must be set before `await getAllRecords()` to avoid lost-message race. `setupDataChannel` uses persistent `onmessage` → `msgBufferRef` queue.
