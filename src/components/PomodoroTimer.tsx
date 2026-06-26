@@ -12,7 +12,7 @@ interface PomodoroTimerProps {
 }
 
 export function PomodoroTimer({ userName, userIndex, onRecordAdded }: PomodoroTimerProps) {
-  const pomodoro = usePomodoro()
+  const pomodoro = usePomodoro(`pomodoro-${userIndex}`)
   const [selectedPresetLabel, setSelectedPresetLabel] = useState(POMODORO_PRESETS[0].label)
 
   const grade = useMemo(() => loadGrade(userIndex), [userIndex])
@@ -97,7 +97,7 @@ export function PomodoroTimer({ userName, userIndex, onRecordAdded }: PomodoroTi
         <div className={`pomodoro__phase ${pomodoro.phase === 'focusing' ? 'pomodoro__phase--focus' : ''} ${pomodoro.phase === 'break' ? 'pomodoro__phase--break' : ''}`}>
           {pomodoro.phase === 'idle' && '选择科目开始番茄钟'}
           {pomodoro.phase === 'subjectSelected' && '准备开始'}
-          {pomodoro.phase === 'focusing' && '专注中'}
+          {pomodoro.phase === 'focusing' && `${pomodoro.selectedSubject}专注中`}
           {pomodoro.phase === 'break' && '休息中'}
         </div>
         <div className="pomodoro__time">{pomodoro.formattedTime}</div>

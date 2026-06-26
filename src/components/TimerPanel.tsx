@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Subject, Grade, GRADES, USERS, getSubjectsForGrade } from '../types'
 import { useTimer } from '../hooks/useTimer'
 import { SubjectButton } from './SubjectButton'
@@ -18,7 +18,17 @@ interface TimerPanelProps {
 
 export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigChange }: TimerPanelProps) {
   const timer = useTimer(userName)
-  const [mode, setMode] = useState<'normal' | 'pomodoro'>('normal')
+  const storageKey = `timer-mode-${userIndex}`
+  const [mode, setMode] = useState<'normal' | 'pomodoro'>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey)
+      if (saved === 'normal' || saved === 'pomodoro') return saved
+    } catch { /**/ }
+    return 'normal'
+  })
+  useEffect(() => {
+    try { sessionStorage.setItem(storageKey, mode) } catch { /**/ }
+  }, [storageKey, mode])
   const [showConfirm, setShowConfirm] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [editName, setEditName] = useState('')

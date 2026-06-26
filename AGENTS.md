@@ -35,6 +35,7 @@ src/
 - **`noUnusedLocals` / `noUnusedParameters`** are enforced. Any unused import, variable, or parameter causes `tsc -b` to fail.
 - **Timer precision via `Date.now()`.** `useTimer` stores `timingStart` (ms timestamp) + `accruedMs`, computes elapsed as `accruedMs + (Date.now() - timingStart)`. `setInterval` only triggers re-render, not accumulation. No drift from browser throttling.
 - **Timer state persisted to `sessionStorage`.** Timer state (status, selectedSubject, accruedMs, timingStart) is saved to `sessionStorage` on every change and restored on mount. This survives page refresh/reload. Keyed by `userName` (`timer-state-{userName}`). Cleared on complete/reset. This means the timer survives browser tab restorations that trigger a page reload.
+- **Pomodoro state persisted to `sessionStorage`.** `usePomodoro(storageKey)` saves state (phase, subject, durations, cycle, `deadline` timestamp, `savedRemaining`) on meaningful changes (`isPaused` included). Restored via lazy initializers on mount. **Running timers use `deadline` for accurate elapsed time; paused/idle timers save `savedRemaining` directly** — prevents stale deadline drift on remount (e.g. switching modes). A mount-restore `useEffect` auto-starts the countdown when restored as running (`!isPaused && remainingSeconds > 0`). Expired timers during refresh auto-transition (focus→break, break→next focus, left paused for safety). Keyed by `pomodoro-{userIndex}`.
 
 ## Multi-user features
 
