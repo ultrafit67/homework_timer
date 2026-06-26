@@ -199,7 +199,7 @@ body {
 .timer-panel__name-row {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   margin-bottom: 12px;
 }
 
@@ -2144,4 +2144,124 @@ body {
 
 .ai-section__back:active {
   opacity: 0.6;
+}
+
+/* Mode toggle (normal / pomodoro) */
+.mode-toggle {
+  display: flex;
+  background: #E8ECF1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mode-toggle__btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mode-toggle__btn--active {
+  background: #fff;
+  color: var(--color-primary);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Pomodoro timer */
+.pomodoro__presets {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.pomodoro__preset-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pomodoro__preset-btn--active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.pomodoro__preset-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.pomodoro__display {
+  text-align: center;
+  padding: 16px 0;
+}
+
+.pomodoro__phase {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.pomodoro__phase--focus {
+  color: #EF4444;
+}
+
+.pomodoro__phase--break {
+  color: #10B981;
+}
+
+.pomodoro__time {
+  font-size: 48px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.pomodoro__cycle {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.pomodoro__progress-bar {
+  height: 6px;
+  background: #E8ECF1;
+  border-radius: 3px;
+  overflow: hidden;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+.pomodoro__progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.pomodoro__progress-fill--focus {
+  background: #EF4444;
+}
+
+.pomodoro__progress-fill--break {
+  background: #10B981;
+}
+
+.pomodoro__hint {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 16px 0;
 }

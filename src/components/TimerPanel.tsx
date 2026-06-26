@@ -3,6 +3,7 @@ import { Subject, Grade, GRADES, USERS, getSubjectsForGrade } from '../types'
 import { useTimer } from '../hooks/useTimer'
 import { SubjectButton } from './SubjectButton'
 import { TimerDisplay } from './TimerDisplay'
+import { PomodoroTimer } from './PomodoroTimer'
 import { ConfirmDialog } from './ConfirmDialog'
 import { HomeworkRecord } from '../types'
 import { addRecord, renameUserRecords } from '../db'
@@ -17,6 +18,7 @@ interface TimerPanelProps {
 
 export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigChange }: TimerPanelProps) {
   const timer = useTimer(userName)
+  const [mode, setMode] = useState<'normal' | 'pomodoro'>('normal')
   const [showConfirm, setShowConfirm] = useState(false)
   const [showConfig, setShowConfig] = useState(false)
   const [editName, setEditName] = useState('')
@@ -88,40 +90,65 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
           {userName}
           {grade > 0 && <span className="timer-panel__grade-badge">{grade}年级</span>}
         </span>
+        <div className="mode-toggle">
+          <button
+            className={`mode-toggle__btn ${mode === 'normal' ? 'mode-toggle__btn--active' : ''}`}
+            onClick={() => setMode('normal')}
+          >
+            普通
+          </button>
+          <button
+            className={`mode-toggle__btn ${mode === 'pomodoro' ? 'mode-toggle__btn--active' : ''}`}
+            onClick={() => setMode('pomodoro')}
+          >
+            番茄钟
+          </button>
+        </div>
       </div>
-      <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
 
-      {error && <div className="timer-panel__error">{error}</div>}
+      {mode === 'normal' ? (
+        <>
+          <TimerDisplay time={timer.formattedTime} isRunning={isRunning} isPaused={isPaused} />
 
-      <div className="subject-grid">
-        {subjects.map(s => (
-          <SubjectButton
-            key={s}
-            subject={s}
-            selected={timer.selectedSubject === s}
-            disabled={isRunning}
-            onClick={handleSubjectClick}
-          />
-        ))}
-      </div>
+          {error && <div className="timer-panel__error">{error}</div>}
 
-      <div className="action-buttons">
-        {timer.status === 'subjectSelected' && (
-          <button className="btn btn--primary btn--large" onClick={handleStart}>开始</button>
-        )}
-        {isTiming && (
-          <div className="action-buttons__row">
-            <button className="btn btn--secondary btn--large action-buttons__half" onClick={timer.pause}>暂停</button>
-            <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>完成</button>
+          <div className="subject-grid">
+            {subjects.map(s => (
+              <SubjectButton
+                key={s}
+                subject={s}
+                selected={timer.selectedSubject === s}
+                disabled={isRunning}
+                onClick={handleSubjectClick}
+              />
+            ))}
           </div>
-        )}
-        {isPaused && (
-          <div className="action-buttons__row">
-            <button className="btn btn--primary btn--large action-buttons__half" onClick={timer.resume}>继续</button>
-            <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>完成</button>
+
+          <div className="action-buttons">
+            {timer.status === 'subjectSelected' && (
+              <button className="btn btn--primary btn--large" onClick={handleStart}>开始</button>
+            )}
+            {isTiming && (
+              <div className="action-buttons__row">
+                <button className="btn btn--secondary btn--large action-buttons__half" onClick={timer.pause}>暂停</button>
+                <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>完成</button>
+              </div>
+            )}
+            {isPaused && (
+              <div className="action-buttons__row">
+                <button className="btn btn--primary btn--large action-buttons__half" onClick={timer.resume}>继续</button>
+                <button className="btn btn--danger btn--large action-buttons__half" onClick={handleComplete}>完成</button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      ) : (
+        <PomodoroTimer
+          userName={userName}
+          userIndex={userIndex}
+          onRecordAdded={onRecordAdded}
+        />
+      )}
 
       <ConfirmDialog
         open={showConfirm}
