@@ -237,6 +237,12 @@ export async function writeBackupToDir(
   timestamp: string,
   data: string
 ): Promise<void> {
+  // File System Access handles lose permission after page reload
+  const fsHandle = handle as any
+  if ((await fsHandle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+    const result = await fsHandle.requestPermission({ mode: 'readwrite' })
+    if (result !== 'granted') throw new Error('目录写入权限被拒绝，请重新选择备份目录')
+  }
   const name = backupFileName(timestamp)
   const fileHandle = await handle.getFileHandle(name, { create: true })
   const writable = await fileHandle.createWritable()

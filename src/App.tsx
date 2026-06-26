@@ -18,6 +18,11 @@ function AppContent() {
   const { refresh } = useRecords()
   const [showLocalSync, setShowLocalSync] = useState(false)
 
+  // Backup on mount so "从备份恢复" always has data
+  useEffect(() => {
+    backupAllRecords().catch(e => console.warn('Backup on mount failed', e))
+  }, [])
+
   // Auto-backup trigger: check every 30 seconds
   useEffect(() => {
     let dirHandle: FileSystemDirectoryHandle | null = null
@@ -32,6 +37,9 @@ function AppContent() {
       if (currentMin < config.time) return
       try {
         const all = await getAllRecords()
+        // Re-check after async operation — prevents race when multiple
+        // interval callbacks pass the guard before the first addBackup()
+        if (hasBackupToday(getBackupList())) return
         const names = loadUserNames()
         const grades = [loadGrade(0), loadGrade(1)]
         const data = { version: 2, records: all, userNames: names, userGrades: grades }
@@ -40,6 +48,8 @@ function AppContent() {
         const json = JSON.stringify(data)
         addBackup(id, timestamp, json)
         cleanOldBackups(config.keepCount)
+        // Update the restore key so "从备份恢复" has fresh data
+        backupAllRecords()
         if (dirHandle) {
           await writeBackupToDir(dirHandle, id, timestamp, json)
           await cleanOldBackupFiles(dirHandle, config.keepCount)
