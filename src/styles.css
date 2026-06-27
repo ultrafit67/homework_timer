@@ -93,7 +93,7 @@ body {
 }
 
 .btn--icon:hover {
-  background: #EFF1F5;
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
@@ -123,6 +123,7 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   text-align: center;
+  color: var(--color-text-secondary);
 }
 
 .user-tabs__tab--active {
@@ -217,8 +218,8 @@ body {
 .timer-panel__grade-badge {
   font-size: 10px;
   font-weight: 700;
-  color: #111111;
-  background: #EFF1F5;
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
   padding: 2px 7px;
   border-radius: 8px;
   line-height: 1.4;
@@ -297,8 +298,8 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  background: #F4F5F7;
-  color: #8B909A;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -315,8 +316,8 @@ body {
 }
 
 .subject-btn--selected {
-  background: color-mix(in srgb, var(--subject-color, var(--color-primary)) 18%, white);
-  color: color-mix(in srgb, var(--subject-color, #111) 90%, black);
+  background: color-mix(in srgb, var(--subject-color, var(--color-primary)) 18%, var(--color-surface));
+  color: color-mix(in srgb, var(--subject-color, #111) 90%, var(--color-bg));
 }
 
 /* Record Item subject icon */
@@ -346,7 +347,7 @@ body {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: 4px;
-  color: #111111;
+  color: var(--color-text);
   transition: color 0.3s;
 }
 
@@ -428,7 +429,7 @@ body {
 }
 
 .btn--secondary {
-  background: #EFF1F5;
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
@@ -452,7 +453,7 @@ body {
 }
 
 .btn--small:hover {
-  background: #E5E9F0;
+  background: var(--color-surface);
 }
 
 .btn--disabled, .btn:disabled {
@@ -806,6 +807,7 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
+  color: var(--color-text-secondary);
 }
 
 .filter-bar__btn--active {
@@ -1950,6 +1952,23 @@ body {
   justify-content: center;
 }
 
+.ai-section__actions .btn {
+  background: var(--color-surface);
+}
+
+.ai-section__actions .btn:hover {
+  background: var(--color-bg);
+}
+
+.ai-section__actions .btn--danger {
+  background: var(--color-danger);
+}
+
+.ai-section__actions .btn--danger:hover {
+  background: var(--color-danger);
+  opacity: 0.85;
+}
+
 .ai-section__loading {
   display: flex;
   align-items: center;
@@ -2215,7 +2234,7 @@ body {
 /* Mode toggle (normal / pomodoro) */
 .mode-toggle {
   display: flex;
-  background: #E8ECF1;
+  background: var(--color-bg);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -2232,7 +2251,7 @@ body {
 }
 
 .mode-toggle__btn--active {
-  background: #fff;
+  background: var(--color-surface);
   color: var(--color-primary);
   border-radius: 6px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);

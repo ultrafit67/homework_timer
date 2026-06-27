@@ -331,7 +331,7 @@ export function AIAnalysis({ records, userFilter, dateFrom, dateTo }: AIAnalysis
       <div className="ai-section__body">
           <div className="ai-section__actions">
             <button
-              className="btn btn--primary btn--small"
+              className="btn btn--small"
               onClick={handleAnalyzeClick}
               disabled={loading || !hasRecords}
             >
