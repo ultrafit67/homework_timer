@@ -21,13 +21,13 @@ export function TimerPanel({ userIndex, userName, onRecordAdded, onUserConfigCha
   const storageKey = `timer-mode-${userIndex}`
   const [mode, setMode] = useState<'normal' | 'pomodoro'>(() => {
     try {
-      const saved = sessionStorage.getItem(storageKey)
+      const saved = localStorage.getItem(storageKey)
       if (saved === 'normal' || saved === 'pomodoro') return saved
     } catch { /**/ }
     return 'normal'
   })
   useEffect(() => {
-    try { sessionStorage.setItem(storageKey, mode) } catch { /**/ }
+    try { localStorage.setItem(storageKey, mode) } catch { /**/ }
   }, [storageKey, mode])
   const [showConfirm, setShowConfirm] = useState(false)
   const [showConfig, setShowConfig] = useState(false)

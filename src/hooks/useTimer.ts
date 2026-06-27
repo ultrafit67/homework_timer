@@ -33,7 +33,7 @@ function computeElapsed(state: TimerState): number {
 
 function getSavedState(userName: string): TimerState | null {
   try {
-    const raw = sessionStorage.getItem(`timer-state-${userName}`)
+    const raw = localStorage.getItem(`timer-state-${userName}`)
     if (raw) {
       const parsed = JSON.parse(raw)
       // Validate it's a real TimerState
@@ -47,13 +47,13 @@ function getSavedState(userName: string): TimerState | null {
 
 function saveState(userName: string, state: TimerState): void {
   try {
-    sessionStorage.setItem(`timer-state-${userName}`, JSON.stringify(state))
+    localStorage.setItem(`timer-state-${userName}`, JSON.stringify(state))
   } catch { /* storage full or unavailable */ }
 }
 
 function clearSavedState(userName: string): void {
   try {
-    sessionStorage.removeItem(`timer-state-${userName}`)
+    localStorage.removeItem(`timer-state-${userName}`)
   } catch { /* ignore */ }
 }
 
@@ -83,7 +83,7 @@ export function useTimer(userName: string): UseTimerReturn {
     }
   }, [state.status])
 
-  // Persist timer state to sessionStorage — survives page refresh/reload
+  // Persist timer state to localStorage — survives page refresh/reload
   useEffect(() => {
     saveState(userName, state)
   }, [state, userName])

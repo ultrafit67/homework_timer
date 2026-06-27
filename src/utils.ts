@@ -29,14 +29,14 @@ export function formatDuration(totalSeconds: number): string {
   const m = Math.floor((totalSeconds % 3600) / 60)
   const s = totalSeconds % 60
   if (h > 0) {
-    let r = `${h}时`
-    if (m > 0 || s > 0) r += `${m}分`
-    if (s > 0) r += `${s}秒`
+    let r = `${h}h`
+    if (m > 0 || s > 0) r += `${m}m`
+    if (s > 0) r += `${s}s`
     return r
   }
   if (m > 0) {
-    let r = `${m}分`
-    if (s > 0) r += `${s}秒`
+    let r = `${m}m`
+    if (s > 0) r += `${s}s`
     return r
   }
   return `${s}秒`

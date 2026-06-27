@@ -50,13 +50,13 @@ interface SavedState {
 
 function savePomodoroState(key: string, state: SavedState): void {
   try {
-    sessionStorage.setItem(key, JSON.stringify(state))
+    localStorage.setItem(key, JSON.stringify(state))
   } catch { /**/ }
 }
 
 function loadPomodoroState(key: string): { state: SavedState | null; remainingSeconds: number } {
   try {
-    const raw = sessionStorage.getItem(key)
+    const raw = localStorage.getItem(key)
     if (!raw) return { state: null, remainingSeconds: 0 }
     const state: SavedState = JSON.parse(raw)
     let remainingSeconds = 0
