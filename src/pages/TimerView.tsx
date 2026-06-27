@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
@@ -135,6 +136,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
     <div className="page timer-page">
       <div className="page__header">
         <h2 className="page__title">家庭作业计时器</h2>
+        <ThemeToggle />
       </div>
       {!showManual ? (
         <>

@@ -271,3 +271,19 @@ export async function cleanOldBackupFiles(
 export function supportsFileSystemAPI(): boolean {
   return typeof window !== 'undefined' && 'showDirectoryPicker' in window
 }
+
+export type ThemeMode = 'system' | 'light' | 'dark'
+
+const THEME_KEY = 'homework-theme'
+
+export function loadTheme(): ThemeMode {
+  try {
+    const raw = localStorage.getItem(THEME_KEY)
+    if (raw === 'system' || raw === 'light' || raw === 'dark') return raw
+  } catch { /* ignore */ }
+  return 'system'
+}
+
+export function saveTheme(mode: ThemeMode): void {
+  localStorage.setItem(THEME_KEY, mode)
+}
