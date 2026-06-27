@@ -3,6 +3,7 @@ import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { KudosButton } from '../components/KudosButton'
 import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
@@ -165,6 +166,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               遇到问题？查看使用方法
             </span>
           </div>
+          <KudosButton />
         </>
       ) : (
         <div className="manual-form">
