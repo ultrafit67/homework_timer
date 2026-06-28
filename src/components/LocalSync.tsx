@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import QRCode from 'qrcode'
 import jsQR from 'jsqr'
-import { useLocalSync, SyncStatus, SelfTestResult } from '../hooks/useLocalSync'
+import { useLocalSync, SyncStatus, SelfTestResult, isChunkedPayload, decodeChunk, reconstructFromChunks } from '../hooks/useLocalSync'
 
 interface LocalSyncProps {
   open: boolean
@@ -13,26 +13,38 @@ const SCAN_INTERVAL_MS = 200
 export function LocalSync({ open, onClose }: LocalSyncProps) {
   const { state, startAsSender, startAsScanner, setRemoteSDP, reset, runSelfTest } = useLocalSync()
 
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const [qrDataUrls, setQrDataUrls] = useState<string[] | null>(null)
   const [testResult, setTestResult] = useState<SelfTestResult | null>(null)
   const [testing, setTesting] = useState(false)
   const [senderScanning, setSenderScanning] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  /** Scan progress while collecting chunks */
+  const [scanProgress, setScanProgress] = useState<{ collected: number; total: number } | null>(null)
+  /** Which QR code is currently displayed (sequential display) */
+  const [currentQrStep, setCurrentQrStep] = useState(0)
+  /** Debug: raw scanned data first bytes */
+  const [debugScanned, setDebugScanned] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const scanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
+  /** Buffer for scanned chunk strings */
+  const chunkBufferRef = useRef<string[]>([])
+  /** Ref holding the current scan result handler (breaks circular useCallback dep) */
+  const scanHandlerRef = useRef<((data: string) => void) | null>(null)
+  /** Ref holding startCamera (breaks circular dep in handleScanResult) */
+  const startCameraRef = useRef<typeof startCamera | null>(null)
   useEffect(() => {
-    if (state.sdp && state.status === 'showing-qr') {
-      QRCode.toDataURL(state.sdp, { width: 300, margin: 1, errorCorrectionLevel: 'L' })
-        .then(setQrDataUrl)
-        .catch(() => setQrDataUrl(null))
+    if (state.sdpChunks && state.sdpChunks.length > 0 && state.status === 'showing-qr') {
+      setCurrentQrStep(0)
+      Promise.all(state.sdpChunks.map(chunk =>
+        QRCode.toDataURL(chunk, { width: 320, margin: 2, errorCorrectionLevel: 'M' })
+      )).then(setQrDataUrls).catch(() => setQrDataUrls(null))
     } else {
-      setQrDataUrl(null)
+      setQrDataUrls(null)
     }
-  }, [state.sdp, state.status])
+  }, [state.sdpChunks, state.status])
 
   const stopCamera = useCallback(() => {
     if (scanTimerRef.current) {
@@ -109,15 +121,64 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
 
         if (code) {
           stopCamera()
-          setSenderScanning(false)
-          setRemoteSDP(code.data)
+          scanHandlerRef.current?.(code.data)
         }
       }, SCAN_INTERVAL_MS)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       setCameraError(msg)
     }
-  }, [setRemoteSDP, stopCamera])
+  }, [stopCamera])
+
+  const handleScanResult = useCallback((data: string) => {
+    const raw = data.trim()
+    setDebugScanned(raw.length > 60 ? raw.slice(0, 60) + '...' : raw)
+    if (isChunkedPayload(raw)) {
+      const decoded = decodeChunk(raw)
+      if (!decoded) { setCameraError('二维码内容无效'); return }
+
+      // Deduplicate by index
+      const dup = chunkBufferRef.current.some(c => {
+        const d = decodeChunk(c)
+        return d && d.index === decoded.index
+      })
+      if (!dup) chunkBufferRef.current.push(raw)
+
+      const collected = chunkBufferRef.current.length
+      const total = decoded.total
+      setScanProgress({ collected, total })
+
+      if (collected >= total) {
+        // All chunks collected — reconstruct
+        const fullSdp = reconstructFromChunks(chunkBufferRef.current)
+        chunkBufferRef.current = []
+        setScanProgress(null)
+        if (fullSdp) {
+          setSenderScanning(false)
+          setRemoteSDP(fullSdp)
+        } else {
+          setCameraError('二维码数据重组失败')
+        }
+      } else {
+        // Continue scanning for more chunks
+        startCameraRef.current?.()
+      }
+    } else if (raw.startsWith('v=')) {
+      // Legacy single-QR SDP
+      chunkBufferRef.current = []
+      setScanProgress(null)
+      setSenderScanning(false)
+      setRemoteSDP(raw)
+    } else if (raw.startsWith('!')) {
+      setCameraError('二维码格式不完整，请重新扫描')
+    } else {
+      setCameraError('无法识别的二维码内容')
+    }
+  }, [setRemoteSDP])
+
+  // Keep refs synchronized to break circular deps
+  useEffect(() => { startCameraRef.current = startCamera })
+  useEffect(() => { scanHandlerRef.current = handleScanResult })
 
   useEffect(() => {
     return () => stopCamera()
@@ -127,8 +188,10 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
     if (!open) {
       stopCamera()
       reset()
-      setQrDataUrl(null)
+      setQrDataUrls(null)
       setCameraError(null)
+      setScanProgress(null)
+      chunkBufferRef.current = []
     }
   }, [open, reset, stopCamera])
 
@@ -149,13 +212,15 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
   const statusLabels: Record<SyncStatus, string> = {
     idle: '',
     'generating-offer': '正在准备连接…',
-    'showing-qr': state.role === 'sender' ? '请对方扫描此二维码' : '请扫描对方设备上的二维码',
+    'showing-qr': state.role === 'sender' ? '请对方扫描二维码' : '请扫描对方设备上的二维码',
     scanning: '正在扫描二维码…',
     connecting: '正在建立连接…',
     syncing: '正在同步数据…',
     complete: '',
     error: ''
   }
+
+  const chunkCount = state.sdpChunks?.length ?? 0
 
   return (
     <div className="dialog-overlay" onClick={onClose}>
@@ -201,55 +266,100 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
           </div>
         )}
 
-        {state.status === 'showing-qr' && state.role === 'sender' && qrDataUrl && !senderScanning && (
+        {/* Sender showing QR codes one at a time */}
+        {state.status === 'showing-qr' && state.role === 'sender' && qrDataUrls && qrDataUrls.length > 0 && !senderScanning && (
           <div className="localsync__qr-section">
-            <p className="localsync__hint">{statusLabels[state.status]}</p>
-            <img src={qrDataUrl} alt="QR Code" className="localsync__qr-image" />
+            <p className="localsync__hint">
+              请对方扫描第 {currentQrStep + 1} 个二维码（共 {chunkCount} 个）
+            </p>
+            <img src={qrDataUrls[currentQrStep]} alt={`二维码 ${currentQrStep + 1}`} className="localsync__qr-image" />
+            <div className="localsync__qr-nav">
+              {currentQrStep < chunkCount - 1 ? (
+                <button className="btn btn--primary" onClick={() => setCurrentQrStep(s => s + 1)}>
+                  已扫描，下一个 ({currentQrStep + 1}/{chunkCount})
+                </button>
+              ) : (
+                <span className="localsync__qr-done">所有二维码已展示 ✓</span>
+              )}
+            </div>
             <div className="localsync__text-fallback">
-              <button className="btn btn--text" onClick={() => { stopCamera(); setSenderScanning(true); setTimeout(startCamera, 100); }}>
+              <button className="btn btn--text" onClick={() => { stopCamera(); chunkBufferRef.current = []; setScanProgress(null); setSenderScanning(true); setTimeout(startCamera, 100); }}>
                 扫码接收对方信息
               </button>
             </div>
           </div>
         )}
 
+        {/* Sender scanning answer QRs */}
         {state.status === 'showing-qr' && state.role === 'sender' && senderScanning && (
           <div className="localsync__scan-section">
-            <p className="localsync__hint">请扫描对方设备上的二维码</p>
+            {scanProgress ? (
+              <p className="localsync__hint">已扫码 {scanProgress.collected}/{scanProgress.total}，继续扫描…</p>
+            ) : (
+              <p className="localsync__hint">请扫描对方设备上的二维码</p>
+            )}
             <div className="localsync__viewport">
               <video ref={videoRef} className="localsync__video" autoPlay playsInline muted />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
-            <button className="btn btn--text" onClick={() => { stopCamera(); setSenderScanning(false); }}>
+            <button className="btn btn--text" onClick={() => { stopCamera(); chunkBufferRef.current = []; setScanProgress(null); setSenderScanning(false); }}>
               返回
             </button>
             {cameraError && <p className="localsync__camera-error">{cameraError}</p>}
+            {debugScanned && cameraError && (
+              <p className="localsync__debug">扫码内容: <code>{debugScanned}</code></p>
+            )}
+            {!cameraError && debugScanned && (
+              <p className="localsync__debug"><code>{debugScanned}</code></p>
+            )}
           </div>
         )}
 
-        {state.status === 'showing-qr' && state.role === 'scanner' && qrDataUrl && (
+        {/* Scanner showing answer QR codes one at a time */}
+        {state.status === 'showing-qr' && state.role === 'scanner' && qrDataUrls && qrDataUrls.length > 0 && (
           <div className="localsync__qr-section">
-            <p className="localsync__hint">{statusLabels[state.status]}</p>
-            <img src={qrDataUrl} alt="QR Code" className="localsync__qr-image" />
-            <p className="localsync__hint localsync__hint--secondary">请将此二维码展示给发送方扫码</p>
+            <p className="localsync__hint">
+              请发送方扫描第 {currentQrStep + 1} 个二维码（共 {chunkCount} 个）
+            </p>
+            <img src={qrDataUrls[currentQrStep]} alt={`二维码 ${currentQrStep + 1}`} className="localsync__qr-image" />
+            <div className="localsync__qr-nav">
+              {currentQrStep < chunkCount - 1 ? (
+                <button className="btn btn--primary" onClick={() => setCurrentQrStep(s => s + 1)}>
+                  已扫描，下一个 ({currentQrStep + 1}/{chunkCount})
+                </button>
+              ) : (
+                <span className="localsync__qr-done">所有二维码已展示 ✓</span>
+              )}
+            </div>
           </div>
         )}
 
-        {state.status === 'showing-qr' && state.role === 'scanner' && !qrDataUrl && (
+        {state.status === 'showing-qr' && !qrDataUrls && !senderScanning && (
           <div className="localsync__progress">
             <div className="localsync__spinner" />
             <p>正在生成二维码…</p>
           </div>
         )}
 
+        {/* Scanner scanning offer QRs with progress */}
         {state.status === 'scanning' && (
           <div className="localsync__scan-section">
-            <p className="localsync__hint">{statusLabels[state.status]}</p>
+            {scanProgress ? (
+              <p className="localsync__hint">已扫码 {scanProgress.collected}/{scanProgress.total}，继续扫描…</p>
+            ) : (
+              <p className="localsync__hint">{statusLabels[state.status]}</p>
+            )}
             <div className="localsync__viewport">
               <video ref={videoRef} className="localsync__video" autoPlay playsInline muted />
               <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
             {cameraError && <p className="localsync__camera-error">{cameraError}</p>}
+            {debugScanned && cameraError && (
+              <p className="localsync__debug">扫码内容: <code>{debugScanned}</code></p>
+            )}
+            {!cameraError && debugScanned && (
+              <p className="localsync__debug"><code>{debugScanned}</code></p>
+            )}
           </div>
         )}
 

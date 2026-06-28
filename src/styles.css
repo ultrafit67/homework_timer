@@ -1701,6 +1701,38 @@ body {
   to { transform: rotate(360deg); }
 }
 
+.localsync__qr-nav {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.localsync__qr-done {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.localsync__qr-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.localsync__qr-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.localsync__qr-label {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
 .localsync__qr-section {
   display: flex;
   flex-direction: column;

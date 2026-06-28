@@ -3,6 +3,64 @@ import { getAllRecords, upsertRecords } from '../db'
 import { HomeworkRecord, USERS } from '../types'
 import { saveUserName, saveGrade, loadUserNames, loadGrade } from '../utils'
 
+/** Marker prefix for chunked QR payloads */
+export const QR_PREFIX = '!qr|'
+
+/** Encode a chunk of SDP into a scannable string */
+function encodeChunk(sessionId: string, total: number, index: number, data: string): string {
+  return `${QR_PREFIX}${sessionId}|${total}|${index}|${data}`
+}
+
+/** Decode a chunk string back to its parts, or null if invalid */
+export function decodeChunk(payload: string): { sessionId: string; total: number; index: number; data: string } | null {
+  const trimmed = payload.trim()
+  if (!trimmed.startsWith(QR_PREFIX)) return null
+  let pos = QR_PREFIX.length
+  const sep1 = trimmed.indexOf('|', pos); if (sep1 === -1) return null
+  const sessionId = trimmed.slice(pos, sep1); pos = sep1 + 1
+  const sep2 = trimmed.indexOf('|', pos); if (sep2 === -1) return null
+  const total = parseInt(trimmed.slice(pos, sep2), 10); if (isNaN(total)) return null; pos = sep2 + 1
+  const sep3 = trimmed.indexOf('|', pos); if (sep3 === -1) return null
+  const index = parseInt(trimmed.slice(pos, sep3), 10); if (isNaN(index)) return null; pos = sep3 + 1
+  const data = trimmed.slice(pos)
+  return { sessionId, total, index, data }
+}
+
+/** Check whether a scanned payload is a chunked payload */
+export function isChunkedPayload(data: string): boolean {
+  return data.trim().startsWith(QR_PREFIX)
+}
+
+/** Strip chunk prefix/formatting — useful when QR decode adds whitespace */
+export function stripChunkPrefix(data: string): string {
+  return data.trim()
+}
+
+/** Split an SDP string into N chunk-encoded strings */
+export function splitSdpIntoChunks(sdp: string, total: number = 3): string[] {
+  const sessionId = Math.random().toString(36).slice(2, 6)
+  const chunkSize = Math.ceil(sdp.length / total)
+  const chunks: string[] = []
+  for (let i = 0; i < total; i++) {
+    const start = i * chunkSize
+    const end = Math.min(start + chunkSize, sdp.length)
+    chunks.push(encodeChunk(sessionId, total, i, sdp.slice(start, end)))
+  }
+  return chunks
+}
+
+/** Reconstruct a full SDP from collected chunk strings, or null if incomplete/mismatched */
+export function reconstructFromChunks(chunks: string[]): string | null {
+  if (chunks.length === 0) return null
+  const parts = chunks.map(c => decodeChunk(c))
+  if (parts.some(p => p === null)) return null
+  const valid = parts as NonNullable<typeof parts[0]>[]
+  const { sessionId, total } = valid[0]
+  if (valid.some(p => p.sessionId !== sessionId || p.total !== total)) return null
+  valid.sort((a, b) => a.index - b.index)
+  return valid.map(p => p.data).join('')
+}
+
 /** A single self-test step log entry */
 export interface TestStep {
   name: string
@@ -30,6 +88,7 @@ export interface SyncState {
   status: SyncStatus
   role: 'sender' | 'scanner' | null
   sdp: string | null
+  sdpChunks: string[] | null
   stats: { sent: number; received: number }
   error: string | null
 }
@@ -129,6 +188,7 @@ export function useLocalSync() {
     status: 'idle',
     role: null,
     sdp: null,
+    sdpChunks: null,
     stats: { sent: 0, received: 0 },
     error: null
   })
@@ -263,7 +323,7 @@ export function useLocalSync() {
       const sdp = pc.localDescription?.sdp
       if (!sdp) throw new Error('无法生成 Offer SDP')
 
-      updateStatus({ status: 'showing-qr', sdp: cleanSDP(sdp) })
+      updateStatus({ status: 'showing-qr', sdpChunks: splitSdpIntoChunks(cleanSDP(sdp), 4) })
 
       timeoutRef.current = setTimeout(() => {
         handleError('连接超时：请确保两台设备在同一网络')
@@ -318,7 +378,7 @@ export function useLocalSync() {
 
         const answerSdp = pc.localDescription!.sdp
         if (answerSdp) {
-          updateStatus({ status: 'showing-qr', sdp: cleanSDP(answerSdp) })
+          updateStatus({ status: 'showing-qr', sdpChunks: splitSdpIntoChunks(cleanSDP(answerSdp), 4) })
         }
       } else {
         // Sender receiving the Answer from QR
@@ -335,7 +395,7 @@ export function useLocalSync() {
     exchangedRef.current = false
     msgBufferRef.current = []
     updateStatus({
-      status: 'idle', role: null, sdp: null,
+      status: 'idle', role: null, sdp: null, sdpChunks: null,
       stats: { sent: 0, received: 0 }, error: null
     })
   }, [cleanup, updateStatus])
