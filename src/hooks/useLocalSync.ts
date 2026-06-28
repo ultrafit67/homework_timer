@@ -8,21 +8,22 @@ export const QR_PREFIX = '!qr|'
 
 /** Encode a chunk of SDP into a scannable string */
 function encodeChunk(sessionId: string, total: number, index: number, data: string): string {
-  return `${QR_PREFIX}${sessionId}|${total}|${index}|${data}`
+  const encoded = btoa(unescape(encodeURIComponent(data)))
+  return `${QR_PREFIX}${sessionId}|${total}|${index}|${encoded}`
 }
 
 /** Decode a chunk string back to its parts, or null if invalid */
 export function decodeChunk(payload: string): { sessionId: string; total: number; index: number; data: string } | null {
-  const trimmed = payload.trim()
-  if (!trimmed.startsWith(QR_PREFIX)) return null
-  let pos = QR_PREFIX.length
-  const sep1 = trimmed.indexOf('|', pos); if (sep1 === -1) return null
-  const sessionId = trimmed.slice(pos, sep1); pos = sep1 + 1
-  const sep2 = trimmed.indexOf('|', pos); if (sep2 === -1) return null
-  const total = parseInt(trimmed.slice(pos, sep2), 10); if (isNaN(total)) return null; pos = sep2 + 1
-  const sep3 = trimmed.indexOf('|', pos); if (sep3 === -1) return null
-  const index = parseInt(trimmed.slice(pos, sep3), 10); if (isNaN(index)) return null; pos = sep3 + 1
-  const data = trimmed.slice(pos)
+  const prefixIndex = payload.indexOf(QR_PREFIX)
+  if (prefixIndex === -1) return null
+  let pos = prefixIndex + QR_PREFIX.length
+  const sep1 = payload.indexOf('|', pos); if (sep1 === -1) return null
+  const sessionId = payload.slice(pos, sep1); pos = sep1 + 1
+  const sep2 = payload.indexOf('|', pos); if (sep2 === -1) return null
+  const total = parseInt(payload.slice(pos, sep2), 10); if (isNaN(total)) return null; pos = sep2 + 1
+  const sep3 = payload.indexOf('|', pos); if (sep3 === -1) return null
+  const index = parseInt(payload.slice(pos, sep3), 10); if (isNaN(index)) return null; pos = sep3 + 1
+  const data = decodeURIComponent(escape(atob(payload.slice(pos))))
   return { sessionId, total, index, data }
 }
 
@@ -359,14 +360,40 @@ export function useLocalSync() {
     const pc = pcRef.current
     if (!pc) { handleError('连接未初始化'); return }
 
+    // Log byte-level details to check for \r presence
+    const previewBytes = Array.from(rawSdp.slice(0, 80)).map(c => `${c.charCodeAt(0)}`).join(',')
+    console.log('[setRemoteSDP] rawSdp charCodes(80):', previewBytes)
+    console.log('[setRemoteSDP] rawSdp includes \\r:', rawSdp.includes('\r'), 'includes \\n:', rawSdp.includes('\n'))
+    // Check last 10 chars for trailing garbage
+    const tail = rawSdp.slice(-10)
+    const tailCodes = Array.from(tail).map(c => `${c.charCodeAt(0)}`).join(',')
+    console.log('[setRemoteSDP] rawSdp 尾部10字符:', JSON.stringify(tail), 'charCodes:', tailCodes)
+
     const sdp = cleanSDP(rawSdp)
+    console.log('[setRemoteSDP] pc.localDescription=%s, sdp.length=%d, cleanSDP后长度=%d', pc.localDescription ? '存在' : 'null', rawSdp.length, sdp.length)
+    console.log('[setRemoteSDP] sdp带行号:\n' + sdp.split('\n').map((l, i) => `${i + 1}: ${l}`).join('\n'))
 
     try {
+      // Pre-test: validate SDP on a temporary PC before using real one
+      const testPc = new RTCPeerConnection(RTC_CONFIG)
+      try {
+        await testPc.setRemoteDescription({ type: 'offer', sdp })
+        console.log('[setRemoteSDP] SDP预测试: 临时PC接受成功')
+        testPc.close()
+      } catch (testErr) {
+        const testMsg = testErr instanceof Error ? testErr.message : String(testErr)
+        console.error('[setRemoteSDP] SDP预测试: 临时PC也拒绝:', testMsg)
+        testPc.close()
+        throw new Error('SDP 解析失败（临时PC也拒绝）: ' + testMsg)
+      }
+
       if (!pc.localDescription) {
         // Scanner receiving the Offer from QR
         await pc.setRemoteDescription({ type: 'offer', sdp })
+        console.log('[setRemoteSDP] setRemoteDescription(offer) 成功')
         const answer = await pc.createAnswer()
         await pc.setLocalDescription(answer)
+        console.log('[setRemoteSDP] createAnswer + setLocalDescription 成功')
 
         await new Promise<void>((resolve) => {
           if (pc.iceGatheringState === 'complete') { resolve(); return }
@@ -382,11 +409,22 @@ export function useLocalSync() {
         }
       } else {
         // Sender receiving the Answer from QR
+        console.log('[setRemoteSDP] 设置 answer')
         await pc.setRemoteDescription({ type: 'answer', sdp })
+        console.log('[setRemoteSDP] setRemoteDescription(answer) 成功')
         updateStatus({ status: 'connecting' })
       }
     } catch (e) {
-      handleError(e instanceof Error ? e.message : 'SDP 交换失败')
+      const errMsg = e instanceof Error ? e.message : 'SDP 交换失败'
+      const lineInfo = e && typeof e === 'object' && 'sdpLineNumber' in e ? ` (行 ${(e as any).sdpLineNumber})` : ''
+      const errProps = typeof e === 'object' && e !== null
+        ? ['message', 'name', 'errorDetail', 'sdpLineNumber', 'sdpLineNumber', 'code']
+            .map(f => `${f}=${(e as any)[f]}`)
+            .filter(s => !s.endsWith('=undefined'))
+            .join(', ')
+        : String(e)
+      console.error('[setRemoteSDP] 失败详情:', errProps)
+      handleError(errMsg + lineInfo)
     }
   }, [handleError, updateStatus])
 
@@ -517,6 +555,20 @@ export function useLocalSync() {
       dc2Received!.send(JSON.stringify({ test: 'hello from PC2' }))
       const received2 = await msgFromPc1
       add('PC2 → PC1 数据收发', received2.includes('hello from PC2'), `PC1 收到: ${received2}`)
+
+      // --- Chunk encode/decode/reconstruct test ---
+      try {
+        for (const total of [1, 2, 3, 4, 5, 10]) {
+          const chunks = splitSdpIntoChunks(cleanedOfferSdp, total)
+          const reconstructed = reconstructFromChunks(chunks)
+          const match = reconstructed === cleanedOfferSdp
+          add(`分块测试 total=${total}`, match,
+            match ? `长度 ${cleanedOfferSdp.length}，${total} 块` : `不匹配: 原始长度 ${cleanedOfferSdp.length}，重建长度 ${reconstructed?.length ?? 0}`)
+          if (!match) throw new Error(`分块 total=${total} 重建结果不一致`)
+        }
+      } catch (e: unknown) {
+        add('⚠ 分块测试异常', false, e instanceof Error ? e.message : String(e))
+      }
 
     } catch (e: unknown) {
       add('⚠ 自测异常', false, e instanceof Error ? e.message : String(e))

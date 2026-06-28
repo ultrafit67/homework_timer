@@ -2,9 +2,21 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'child_process'
+
+function getGitHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+  } catch {
+    return 'unknown'
+  }
+}
 
 export default defineConfig({
   base: '/homework_timer/',
+  define: {
+    __APP_VERSION__: JSON.stringify(getGitHash())
+  },
   server: {
     host: '0.0.0.0'
   },

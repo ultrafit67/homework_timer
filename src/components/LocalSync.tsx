@@ -2,6 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import QRCode from 'qrcode'
 import jsQR from 'jsqr'
 import { useLocalSync, SyncStatus, SelfTestResult, isChunkedPayload, decodeChunk, reconstructFromChunks } from '../hooks/useLocalSync'
+import { patchConsole, getCapturedLogs, clearCapturedLogs } from '../utils/consoleCapture'
+// Activate console capture early
+patchConsole()
 
 interface LocalSyncProps {
   open: boolean
@@ -24,6 +27,9 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
   const [currentQrStep, setCurrentQrStep] = useState(0)
   /** Debug: raw scanned data first bytes */
   const [debugScanned, setDebugScanned] = useState<string | null>(null)
+  /** Debug: reconstructed SDP preview */
+  const [debugReconstructedSdp, setDebugReconstructedSdp] = useState<string | null>(null)
+  const [showDiag, setShowDiag] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -154,6 +160,11 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
         chunkBufferRef.current = []
         setScanProgress(null)
         if (fullSdp) {
+          // Store SDP preview for debugging
+          const lines = fullSdp.split('\n').filter(l => l.length > 0).map(l => l.replace(/\r$/, ''))
+          const numbered = lines.map((l, i) => `${String(i + 1).padStart(2, ' ')}: ${l.replace(/\r/g, '\\r')}`).join('\n')
+          const preview = `长度 ${fullSdp.length}，行数 ${lines.length}\n---\n${numbered}\n---`
+          setDebugReconstructedSdp(preview)
           setSenderScanning(false)
           setRemoteSDP(fullSdp)
         } else {
@@ -206,8 +217,15 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
 
   if (!open) return null
 
-  const handleStartSender = () => { reset(); startAsSender() }
-  const handleStartScanner = () => { reset(); startAsScanner(); setTimeout(startCamera, 100) }
+  const clearScanBuffer = () => {
+    chunkBufferRef.current = []
+    setScanProgress(null)
+    setDebugScanned(null)
+    setDebugReconstructedSdp(null)
+    setShowDiag(false)
+  }
+  const handleStartSender = () => { clearScanBuffer(); reset(); startAsSender() }
+  const handleStartScanner = () => { clearScanBuffer(); reset(); startAsScanner(); setTimeout(startCamera, 100) }
 
   const statusLabels: Record<SyncStatus, string> = {
     idle: '',
@@ -378,7 +396,21 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
         {state.status === 'error' && (
           <div className="localsync__error-section">
             <p className="localsync__error-text">{state.error}</p>
-            <button className="btn btn--primary" onClick={reset}>重试</button>
+            {debugReconstructedSdp && (
+              <div className="localsync__debug">
+                <button className="btn btn--text" style={{ fontSize: 10, padding: '2px 6px', float: 'right' }} onClick={() => navigator.clipboard.writeText(debugReconstructedSdp)}>复制</button>
+                <pre style={{ fontSize: 10, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', clear: 'both' }}>{debugReconstructedSdp}</pre>
+              </div>
+            )}
+            <div style={{ marginTop: 8 }}>
+              <button className="btn btn--text" style={{ fontSize: 11 }} onClick={() => setShowDiag(v => !v)}>
+                {showDiag ? '隐藏' : '显示'}诊断日志
+              </button>
+              {showDiag && (
+                <pre style={{ fontSize: 10, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: '#f5f5f5', padding: 8, borderRadius: 4, marginTop: 4 }}>{getCapturedLogs() || '(无日志)'}</pre>
+              )}
+            </div>
+            <button className="btn btn--primary" onClick={() => { clearScanBuffer(); reset(); clearCapturedLogs() }}>重试</button>
           </div>
         )}
 
@@ -387,7 +419,7 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
             <button className="btn btn--secondary btn--large" onClick={onClose}>关闭</button>
           )}
           {state.status !== 'idle' && state.status !== 'complete' && state.status !== 'error' && (
-            <button className="btn btn--secondary btn--large" onClick={() => { stopCamera(); reset(); }}>取消</button>
+            <button className="btn btn--secondary btn--large" onClick={() => { stopCamera(); clearScanBuffer(); reset(); }}>取消</button>
           )}
         </div>
       </div>

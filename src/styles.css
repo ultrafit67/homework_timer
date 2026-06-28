@@ -151,8 +151,17 @@ body {
   justify-content: center;
   gap: 4px;
   margin-top: 24px;
-  padding-bottom: 32px;
   flex-wrap: wrap;
+}
+
+.timer-page__version {
+  text-align: center;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+  margin-top: 8px;
+  padding-bottom: 32px;
+  user-select: none;
 }
 
 .timer-page {
@@ -2480,3 +2489,16 @@ body {
   text-align: center;
   flex-shrink: 0;
 }
+
+/* Bottom nav version */
+.bottom-nav__version {
+  position: absolute;
+  right: 8px;
+  bottom: 4px;
+  font-size: 9px;
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+}
+

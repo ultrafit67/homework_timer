@@ -166,6 +166,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               遇到问题？查看使用方法
             </span>
           </div>
+          <div className="timer-page__version">{__APP_VERSION__}</div>
           <KudosButton />
         </>
       ) : (
