@@ -26,6 +26,7 @@ export function RecordsView() {
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [showPrivacy, setShowPrivacy] = useState(false)
 
   const handleExport = async () => {
     try {
@@ -359,6 +360,7 @@ export function RecordsView() {
         <input ref={fileInputRef} type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
         <button className="btn btn--text" onClick={handleRestore}>从备份恢复</button>
         <button className="btn btn--text btn--text-danger" onClick={() => setShowClearConfirm(true)}>清除所有记录</button>
+        <button className="btn btn--text" onClick={() => setShowPrivacy(true)}>隐私声明</button>
         {importMsg && <p className="data-io__msg">{importMsg}</p>}
       </div>
 
@@ -441,6 +443,24 @@ export function RecordsView() {
         onConfirm={handleClearAll}
         onCancel={() => setShowClearConfirm(false)}
       />
+
+      {showPrivacy && (
+        <div className="dialog-overlay" onClick={() => setShowPrivacy(false)}>
+          <div className="dialog" onClick={e => e.stopPropagation()} style={{maxWidth:'360px'}}>
+            <div className="dialog__title">隐私声明</div>
+            <div className="dialog__message" style={{textAlign:'left', fontSize:'14px'}}>
+              <p style={{marginBottom:'12px'}}>本应用重视您的隐私。</p>
+              <p style={{marginBottom:'12px'}}>所有数据（作业记录、设置等）仅存储在您设备的本地数据库（IndexedDB）中，<strong>不会上传到任何服务器</strong>。</p>
+              <p style={{marginBottom:'12px'}}>备份文件导出后保存在您指定的本地目录或下载到您的设备，不会被应用自动上传。</p>
+              <p style={{marginBottom:'12px'}}><strong>AI 分析</strong>功能需要您自行配置 API Key，分析请求直接发送至 DeepSeek API。传输内容仅包含科目的学习时长统计，不包含您的姓名、年级等个人信息。</p>
+              <p>我们不会以任何方式收集、存储或分享您的个人数据。</p>
+            </div>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => setShowPrivacy(false)}>知道了</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
