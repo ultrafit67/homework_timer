@@ -75,6 +75,7 @@ src/
 - **Export/Import with config**: JSON export includes user names + grades in versioned wrapper; import compatible with old format
 - **User config reset**: config dialog has "重置默认值" button to reset name/grade to defaults
 - **Clear all records**: "清除所有记录" button on Records page with confirmation dialog, permanently removes all records from IndexedDB
+- **Feedback**: "问题反馈" button on timer page opens dialog; submits via Formspree POST (no backend required)
 
 ## Timer state machine (`useTimer.ts`)
 

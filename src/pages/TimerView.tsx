@@ -36,6 +36,11 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [showManual, setShowManual] = useState(false)
   const [showUsage, setShowUsage] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [feedbackSending, setFeedbackSending] = useState(false)
+  const [feedbackSent, setFeedbackSent] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
   const [users, setUsers] = useState<string[]>(() => loadUserNames())
   const [manualUserIdx, setManualUserIdx] = useState<number>(0)
   const [manualSubject, setManualSubject] = useState<Subject | null>(null)
@@ -175,9 +180,10 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <span className={`ai-settings-link${hasApiKey ? ' ai-settings-link--set' : ''}`} onClick={() => setShowApiKey(true)}>
               AI设置
             </span>
-            <span className="usage-link" onClick={() => setShowUsage(true)}>
-              遇到问题？查看使用方法
-            </span>
+            <div className="timer-page__footer-row">
+              <span className="usage-link" onClick={() => setShowUsage(true)}>使用方法</span>
+              <span className="usage-link" onClick={() => { setFeedbackText(''); setShowFeedback(true) }}>问题反馈</span>
+            </div>
           </div>
           <div className="timer-page__version">{version}</div>
           <KudosButton />
@@ -320,6 +326,69 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <div className="dialog__actions">
               <button className="btn btn--primary" onClick={() => setShowUsage(false)}>知道了</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showFeedback && (
+        <div className="dialog-overlay" onClick={() => { setShowFeedback(false); setFeedbackSent(false); setFeedbackError(null) }}>
+          <div className="dialog dialog--feedback" onClick={e => e.stopPropagation()}>
+            {feedbackSent ? (
+              <>
+                <h3 className="dialog__title">发送成功</h3>
+                <div className="dialog__body" style={{ textAlign: 'center' }}>
+                  <p className="dialog__desc">感谢你的反馈！</p>
+                </div>
+                <div className="dialog__actions">
+                  <button className="btn btn--primary" onClick={() => { setShowFeedback(false); setFeedbackSent(false); setFeedbackError(null) }}>
+                    关闭
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="dialog__title">问题反馈</h3>
+                <div className="dialog__body">
+                  <p className="dialog__desc">请描述你遇到的问题或建议。</p>
+                  <textarea
+                    className="dialog__textarea"
+                    rows={6}
+                    placeholder="请详细描述问题或建议…"
+                    value={feedbackText}
+                    onChange={e => { setFeedbackText(e.target.value); setFeedbackError(null) }}
+                  />
+                  {feedbackError && (
+                    <p className="dialog__error" style={{ fontSize: 13, color: 'var(--color-danger, #e53e3e)', marginTop: 8 }}>{feedbackError}</p>
+                  )}
+                </div>
+                <div className="dialog__actions">
+                  <button className="btn btn--secondary" onClick={() => { setShowFeedback(false); setFeedbackSent(false); setFeedbackError(null) }}>取消</button>
+                  <button
+                    className="btn btn--primary"
+                    disabled={!feedbackText.trim() || feedbackSending}
+                    onClick={async () => {
+                      setFeedbackSending(true)
+                      setFeedbackError(null)
+                      try {
+                        const res = await fetch('https://formspree.io/f/mdardzjl', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ message: feedbackText.trim() })
+                        })
+                        if (!res.ok) throw new Error('发送失败，请稍后重试')
+                        setFeedbackSent(true)
+                      } catch (e) {
+                        setFeedbackError(e instanceof Error ? e.message : '发送失败')
+                      } finally {
+                        setFeedbackSending(false)
+                      }
+                    }}
+                  >
+                    {feedbackSending ? '发送中…' : '发送'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
