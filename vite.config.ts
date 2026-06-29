@@ -12,41 +12,25 @@ function getGitHash(): string {
   }
 }
 
-/** Virtual module that serves the current git hash, updated on commit via HMR */
-function versionPlugin(): Plugin {
-  const VIRTUAL_ID = '\0virtual:version'
-  const resolvedId = 'virtual:version'
-  return {
-    name: 'version',
-    resolveId(id) {
-      if (id === resolvedId) return VIRTUAL_ID
-    },
-    load(id) {
-      if (id === VIRTUAL_ID) {
-        return `export default ${JSON.stringify(getGitHash())}`
-      }
-    },
-    configureServer(server) {
-      // Re-read git hash when HEAD or refs change (e.g. after commit)
-      server.watcher.add('.git/HEAD')
-      server.watcher.add('.git/refs/')
-      server.watcher.on('change', (path) => {
-        if (path.startsWith('.git/')) {
-          const mod = server.moduleGraph.getModuleById(VIRTUAL_ID)
-          if (mod) server.reloadModule(mod)
-        }
-      })
-    }
-  }
-}
-
 export default defineConfig({
   base: '/homework_timer/',
+  define: {
+    __APP_VERSION__: JSON.stringify(getGitHash())
+  },
   server: {
     host: '0.0.0.0'
   },
   plugins: [
-    versionPlugin(),
+    {
+      name: 'dev-version',
+      configureServer(server) {
+        server.middlewares.use('/__version', (_req, res) => {
+          res.setHeader('Content-Type', 'text/plain')
+          res.setHeader('Cache-Control', 'no-cache')
+          res.end(getGitHash())
+        })
+      }
+    } satisfies Plugin,
     react(),
     basicSsl(),
     VitePWA({

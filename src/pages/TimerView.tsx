@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { HomeworkRecord, Subject, getSubjectsForGrade } from '../types'
 import { TimerPanel } from '../components/TimerPanel'
 import { SubjectButton } from '../components/SubjectButton'
@@ -8,7 +8,6 @@ import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
 import { loadApiKey } from '../hooks/useAI'
-import __APP_VERSION__ from 'virtual:version'
 
 interface TimerViewProps {
   onRecordAdded: (record?: HomeworkRecord) => void
@@ -46,6 +45,19 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [manualMinutes, setManualMinutes] = useState(30)
   const [error, setError] = useState<string | null>(null)
   const hasApiKey = useMemo(() => !!loadApiKey(), [showApiKey])
+  const [version, setVersion] = useState(__APP_VERSION__)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const fetchVersion = () => {
+      fetch('/__version?t=' + Date.now())
+        .then(r => r.text())
+        .then(v => setVersion(v))
+        .catch(() => {})
+    }
+    fetchVersion()
+    window.addEventListener('focus', fetchVersion)
+    return () => window.removeEventListener('focus', fetchVersion)
+  }, [])
 
   const handleUserConfigChange = () => {
     setUsers(loadUserNames())
@@ -167,7 +179,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               遇到问题？查看使用方法
             </span>
           </div>
-          <div className="timer-page__version">{__APP_VERSION__}</div>
+          <div className="timer-page__version">{version}</div>
           <KudosButton />
         </>
       ) : (
