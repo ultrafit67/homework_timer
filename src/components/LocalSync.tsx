@@ -270,6 +270,9 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
                 </li>
               ))}
             </ul>
+            <button className="btn btn--text" onClick={() => setTestResult(null)} style={{ marginTop: 8 }}>
+              返回
+            </button>
           </div>
         )}
 
