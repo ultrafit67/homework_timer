@@ -8,6 +8,7 @@ import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
 import { loadApiKey } from '../hooks/useAI'
+import __APP_VERSION__ from 'virtual:version'
 
 interface TimerViewProps {
   onRecordAdded: (record?: HomeworkRecord) => void

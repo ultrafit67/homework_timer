@@ -1,3 +1,6 @@
 /// <reference types="vite/client" />
 
-declare const __APP_VERSION__: string
+declare module 'virtual:version' {
+  const version: string
+  export default version
+}
