@@ -13,7 +13,7 @@ src/
    hooks/
      useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
      useRecords.ts  — CRUD + computed stats + user/subject filter
-     useLocalSync.ts — LAN P2P sync via WebRTC (two-QR handshake, data channel exchange)
+     useLocalSync.ts — LAN P2P sync via WebRTC (multi-QR handshake, data channel exchange)
      useAI.ts       — DeepSeek API call hook, loading/error state, history management
    components/
      TimerPanel.tsx — Single-user timer panel (config dialog: editable name + grade, reset defaults)
@@ -142,17 +142,21 @@ src/
 ## LAN sync (P2P WebRTC, no server)
 
 - Opt-in via QR button on timer page → `useLocalSync` hook manages WebRTC peer connection + data channel
-- **Two-QR handshake**: sender creates Offer → QR → scanner scans → scanner creates Answer → QR → sender scans → `ondatachannel` fires, data channel opens
-- SDP compressed via `cleanSDP()`: removes `a=extmap-allow-mixed`, `a=msid-semantic`, `a=ice-options:trickle`; strips `generation N` / `network-cost N` from ICE candidates; dedup IPv4 host candidates; filters out TCP + IPv6 candidates
-- QR: `qrcode` library, `errorCorrectionLevel: 'L'`, `width: 300`, `margin: 1`
+- **Multi-QR handshake** (2 QRs each direction): sender creates Offer → gzip-compressed + base64 → split into 2 QR codes → scanner scans both sequentially → scanner creates Answer → gzip-compressed + base64 → split into 2 QR codes → sender scans both → `ondatachannel` fires, data channel opens
+- SDP preprocessing via `cleanSDP()`: removes `a=extmap-allow-mixed`, `a=msid-semantic`, `a=ice-options:trickle`; strips `generation N` / `network-cost N` from ICE candidates; dedup IPv4 host candidates; filters out TCP + IPv6 candidates
+- **gzip compression** (`CompressionStream`): reduces SDP size by ~53%, enabling 2-QR handshake (4 would be needed without compression)
+- SDP data base64-encoded in QR content to avoid control-character corruption in QR encode→image→scan→decode pipeline
+- Sequential single-QR display with "下一个" button and progress indicator (scanned X/Y)
+- QR: `qrcode` library, `errorCorrectionLevel: 'L'`, `width: 320`, `margin: 2`
 - Camera: `jsQR` for scanning, `@vitejs/plugin-basic-ssl` for HTTPS (required for camera access on mobile)
 - STUN: `stun:stun.l.google.com:19302` (no TURN)
 - **Data exchange**: both sides call `getAllRecords()`, swap via `dc.send()`, then `upsertRecords()` on received data
 - **Message buffering**: `dc.onmessage` set permanently in `setupDataChannel()` to a buffer queue (`msgBufferRef`), preventing message loss during async DB reads. `exchangeRecords()` checks buffer first, then sets a fresh timeout-based waiter
 - **User config sync**: payload includes `userNames` + `userGrades`; merge rule: if local value equals default (`USERS[i]` for name, `0` for grade), adopt remote value
-- Self-test: "自检" button in dialog creates two in-page peer connections, bypasses QR/camera
+- Self-test: "自检" button in dialog creates two in-page peer connections + chunk consistency test (total=1/2/3/4/5/10), bypasses QR/camera
 - Sync status: floating indicator (`sync-indicator`) at bottom-right, hidden by default
 - `a=max-message-size` preserved in SDP to keep 256KB message limit
+- Connection timeout (30s) cleared at each progress point (scanner receives offer, sender receives answer, data channel opens)
 
 ## Export/Import JSON
 

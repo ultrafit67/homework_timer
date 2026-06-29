@@ -298,7 +298,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               </section>
               <section>
                 <h4>本地扫码同步</h4>
-                <p>两台手机连接到同一 WiFi，点击计时页面的 QR 图标 →「发起同步」生成二维码，另一台点「扫描同步」扫码配对，自动交换数据。同步包含记录和姓名配置（姓名/年级）。</p>
+                <p>两台手机连接到同一 WiFi，点击计时页面的 QR 图标 →「显示二维码」依次生成 2 个二维码，另一台点「扫码同步」依次扫描配对，自动交换数据。同步包含记录和姓名配置（姓名/年级）。数据经 gzip 压缩后传输。</p>
               </section>
               <section>
                 <h4>AI 分析</h4>
