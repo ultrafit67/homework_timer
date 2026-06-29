@@ -8,28 +8,15 @@ export const QR_PREFIX = '!qr|'
 
 /** gzip compress a string then base64-encode it */
 async function compressAndBase64(data: string): Promise<string> {
-  const cs = new CompressionStream('gzip')
-  const writer = cs.writable.getWriter()
-  await writer.write(new TextEncoder().encode(data))
-  await writer.close()
+  const blob = new Blob([new TextEncoder().encode(data)])
+  const compressed = blob.stream().pipeThrough(new CompressionStream('gzip'))
+  const compressedBlob = await new Response(compressed).blob()
+  const bytes = new Uint8Array(await compressedBlob.arrayBuffer())
 
-  const reader = cs.readable.getReader()
-  const parts: Uint8Array[] = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    parts.push(value)
-  }
-  const total = parts.reduce((s, p) => s + p.length, 0)
-  const flat = new Uint8Array(total)
-  let offset = 0
-  for (const p of parts) { flat.set(p, offset); offset += p.length }
-
-  // Uint8Array → binary string → base64 (chunked for perf)
   let bin = ''
   const CHUNK = 8192
-  for (let i = 0; i < flat.length; i += CHUNK) {
-    bin += String.fromCharCode(...flat.subarray(i, i + CHUNK))
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
   }
   return btoa(bin)
 }
@@ -40,24 +27,10 @@ async function base64AndDecompress(encoded: string): Promise<string> {
   const bytes = new Uint8Array(bin.length)
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
 
-  const ds = new DecompressionStream('gzip')
-  const writer = ds.writable.getWriter()
-  await writer.write(bytes)
-  await writer.close()
-
-  const reader = ds.readable.getReader()
-  const parts: Uint8Array[] = []
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    parts.push(value)
-  }
-  const total = parts.reduce((s, p) => s + p.length, 0)
-  const flat = new Uint8Array(total)
-  let offset = 0
-  for (const p of parts) { flat.set(p, offset); offset += p.length }
-
-  return new TextDecoder().decode(flat)
+  const blob = new Blob([bytes])
+  const decompressed = blob.stream().pipeThrough(new DecompressionStream('gzip'))
+  const decompressedBlob = await new Response(decompressed).blob()
+  return new TextDecoder().decode(await decompressedBlob.arrayBuffer())
 }
 
 /**
