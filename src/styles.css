@@ -1301,6 +1301,7 @@ body {
 .grade-btn {
   border: 1px solid var(--color-border);
   background: var(--color-bg);
+  color: var(--color-text);
   padding: 12px 8px;
   border-radius: 10px;
   font-size: 15px;
