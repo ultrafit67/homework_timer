@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import QRCode from 'qrcode'
 import jsQR from 'jsqr'
-import { useLocalSync, SyncStatus, SelfTestResult, isChunkedPayload, decodeChunk, reconstructFromChunks } from '../hooks/useLocalSync'
+import { useLocalSync, SyncStatus, SelfTestResult, isChunkedPayload, parseChunkHeader, reconstructFromChunks } from '../hooks/useLocalSync'
 import { patchConsole, getCapturedLogs, clearCapturedLogs } from '../utils/consoleCapture'
 // Activate console capture early
 patchConsole()
@@ -136,27 +136,27 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
     }
   }, [stopCamera])
 
-  const handleScanResult = useCallback((data: string) => {
+  const handleScanResult = useCallback(async (data: string) => {
     const raw = data.trim()
     setDebugScanned(raw.length > 60 ? raw.slice(0, 60) + '...' : raw)
     if (isChunkedPayload(raw)) {
-      const decoded = decodeChunk(raw)
-      if (!decoded) { setCameraError('二维码内容无效'); return }
+      const header = parseChunkHeader(raw)
+      if (!header) { setCameraError('二维码内容无效'); return }
 
-      // Deduplicate by index
+      // Deduplicate by index (sync header parse, no decompression needed)
       const dup = chunkBufferRef.current.some(c => {
-        const d = decodeChunk(c)
-        return d && d.index === decoded.index
+        const h = parseChunkHeader(c)
+        return h && h.index === header.index
       })
       if (!dup) chunkBufferRef.current.push(raw)
 
       const collected = chunkBufferRef.current.length
-      const total = decoded.total
+      const total = header.total
       setScanProgress({ collected, total })
 
       if (collected >= total) {
         // All chunks collected — reconstruct
-        const fullSdp = reconstructFromChunks(chunkBufferRef.current)
+        const fullSdp = await reconstructFromChunks(chunkBufferRef.current)
         chunkBufferRef.current = []
         setScanProgress(null)
         if (fullSdp) {

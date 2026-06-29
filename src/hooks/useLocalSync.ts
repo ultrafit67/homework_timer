@@ -6,14 +6,65 @@ import { saveUserName, saveGrade, loadUserNames, loadGrade } from '../utils'
 /** Marker prefix for chunked QR payloads */
 export const QR_PREFIX = '!qr|'
 
-/** Encode a chunk of SDP into a scannable string */
-function encodeChunk(sessionId: string, total: number, index: number, data: string): string {
-  const encoded = btoa(unescape(encodeURIComponent(data)))
-  return `${QR_PREFIX}${sessionId}|${total}|${index}|${encoded}`
+/** gzip compress a string then base64-encode it */
+async function compressAndBase64(data: string): Promise<string> {
+  const cs = new CompressionStream('gzip')
+  const writer = cs.writable.getWriter()
+  await writer.write(new TextEncoder().encode(data))
+  await writer.close()
+
+  const reader = cs.readable.getReader()
+  const parts: Uint8Array[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    parts.push(value)
+  }
+  const total = parts.reduce((s, p) => s + p.length, 0)
+  const flat = new Uint8Array(total)
+  let offset = 0
+  for (const p of parts) { flat.set(p, offset); offset += p.length }
+
+  // Uint8Array → binary string → base64 (chunked for perf)
+  let bin = ''
+  const CHUNK = 8192
+  for (let i = 0; i < flat.length; i += CHUNK) {
+    bin += String.fromCharCode(...flat.subarray(i, i + CHUNK))
+  }
+  return btoa(bin)
 }
 
-/** Decode a chunk string back to its parts, or null if invalid */
-export function decodeChunk(payload: string): { sessionId: string; total: number; index: number; data: string } | null {
+/** base64-decode then gzip decompress back to the original string */
+async function base64AndDecompress(encoded: string): Promise<string> {
+  const bin = atob(encoded)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+
+  const ds = new DecompressionStream('gzip')
+  const writer = ds.writable.getWriter()
+  await writer.write(bytes)
+  await writer.close()
+
+  const reader = ds.readable.getReader()
+  const parts: Uint8Array[] = []
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    parts.push(value)
+  }
+  const total = parts.reduce((s, p) => s + p.length, 0)
+  const flat = new Uint8Array(total)
+  let offset = 0
+  for (const p of parts) { flat.set(p, offset); offset += p.length }
+
+  return new TextDecoder().decode(flat)
+}
+
+/**
+ * Synchronously extract header fields from a chunk payload (no decompression).
+ * Useful for dedup checks before full decode.
+ */
+export function parseChunkHeader(payload: string): { sessionId: string; total: number; index: number } | null {
   const prefixIndex = payload.indexOf(QR_PREFIX)
   if (prefixIndex === -1) return null
   let pos = prefixIndex + QR_PREFIX.length
@@ -22,9 +73,31 @@ export function decodeChunk(payload: string): { sessionId: string; total: number
   const sep2 = payload.indexOf('|', pos); if (sep2 === -1) return null
   const total = parseInt(payload.slice(pos, sep2), 10); if (isNaN(total)) return null; pos = sep2 + 1
   const sep3 = payload.indexOf('|', pos); if (sep3 === -1) return null
-  const index = parseInt(payload.slice(pos, sep3), 10); if (isNaN(index)) return null; pos = sep3 + 1
-  const data = decodeURIComponent(escape(atob(payload.slice(pos))))
-  return { sessionId, total, index, data }
+  const index = parseInt(payload.slice(pos, sep3), 10); if (isNaN(index)) return null
+  return { sessionId, total, index }
+}
+
+/** Encode a chunk of SDP into a scannable string (gzip-compressed + base64) */
+async function encodeChunk(sessionId: string, total: number, index: number, data: string): Promise<string> {
+  const encoded = await compressAndBase64(data)
+  return `${QR_PREFIX}${sessionId}|${total}|${index}|${encoded}`
+}
+
+/** Decode a chunk string back to its parts (base64 + gzip-decompress), or null if invalid */
+export async function decodeChunk(payload: string): Promise<{ sessionId: string; total: number; index: number; data: string } | null> {
+  const header = parseChunkHeader(payload)
+  if (!header) return null
+  // data is everything after the third '|'
+  const lastSep = payload.lastIndexOf('|')
+  if (lastSep === -1) return null
+  const b64 = payload.slice(lastSep + 1)
+  if (!b64) return null
+  try {
+    const data = await base64AndDecompress(b64)
+    return { ...header, data }
+  } catch {
+    return null
+  }
 }
 
 /** Check whether a scanned payload is a chunked payload */
@@ -37,23 +110,23 @@ export function stripChunkPrefix(data: string): string {
   return data.trim()
 }
 
-/** Split an SDP string into N chunk-encoded strings */
-export function splitSdpIntoChunks(sdp: string, total: number = 3): string[] {
+/** Split an SDP string into N chunk-encoded strings (gzip-compressed) */
+export async function splitSdpIntoChunks(sdp: string, total: number = 2): Promise<string[]> {
   const sessionId = Math.random().toString(36).slice(2, 6)
   const chunkSize = Math.ceil(sdp.length / total)
-  const chunks: string[] = []
+  const promises: Promise<string>[] = []
   for (let i = 0; i < total; i++) {
     const start = i * chunkSize
     const end = Math.min(start + chunkSize, sdp.length)
-    chunks.push(encodeChunk(sessionId, total, i, sdp.slice(start, end)))
+    promises.push(encodeChunk(sessionId, total, i, sdp.slice(start, end)))
   }
-  return chunks
+  return Promise.all(promises)
 }
 
 /** Reconstruct a full SDP from collected chunk strings, or null if incomplete/mismatched */
-export function reconstructFromChunks(chunks: string[]): string | null {
+export async function reconstructFromChunks(chunks: string[]): Promise<string | null> {
   if (chunks.length === 0) return null
-  const parts = chunks.map(c => decodeChunk(c))
+  const parts = await Promise.all(chunks.map(c => decodeChunk(c)))
   if (parts.some(p => p === null)) return null
   const valid = parts as NonNullable<typeof parts[0]>[]
   const { sessionId, total } = valid[0]
@@ -325,7 +398,7 @@ export function useLocalSync() {
       const sdp = pc.localDescription?.sdp
       if (!sdp) throw new Error('无法生成 Offer SDP')
 
-      updateStatus({ status: 'showing-qr', sdpChunks: splitSdpIntoChunks(cleanSDP(sdp), 4) })
+      updateStatus({ status: 'showing-qr', sdpChunks: await splitSdpIntoChunks(cleanSDP(sdp), 2) })
 
       timeoutRef.current = setTimeout(() => {
         handleError('连接超时：请确保两台设备在同一网络')
@@ -407,7 +480,7 @@ export function useLocalSync() {
 
         const answerSdp = pc.localDescription!.sdp
         if (answerSdp) {
-          updateStatus({ status: 'showing-qr', sdpChunks: splitSdpIntoChunks(cleanSDP(answerSdp), 4) })
+          updateStatus({ status: 'showing-qr', sdpChunks: await splitSdpIntoChunks(cleanSDP(answerSdp), 2) })
         }
       } else {
         // Sender receiving the Answer from QR
@@ -562,8 +635,8 @@ export function useLocalSync() {
       // --- Chunk encode/decode/reconstruct test ---
       try {
         for (const total of [1, 2, 3, 4, 5, 10]) {
-          const chunks = splitSdpIntoChunks(cleanedOfferSdp, total)
-          const reconstructed = reconstructFromChunks(chunks)
+          const chunks = await splitSdpIntoChunks(cleanedOfferSdp, total)
+          const reconstructed = await reconstructFromChunks(chunks)
           const match = reconstructed === cleanedOfferSdp
           add(`分块测试 total=${total}`, match,
             match ? `长度 ${cleanedOfferSdp.length}，${total} 块` : `不匹配: 原始长度 ${cleanedOfferSdp.length}，重建长度 ${reconstructed?.length ?? 0}`)
