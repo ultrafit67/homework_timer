@@ -284,6 +284,7 @@ export function useLocalSync() {
     const startExchange = () => {
       if (exchangedRef.current) return
       exchangedRef.current = true
+      if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null }
       exchangeRecords(dc, role).catch(e => handleError(e.message))
     }
     dc.onopen = startExchange
@@ -389,6 +390,7 @@ export function useLocalSync() {
 
       if (!pc.localDescription) {
         // Scanner receiving the Offer from QR
+        if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null }
         await pc.setRemoteDescription({ type: 'offer', sdp })
         console.log('[setRemoteSDP] setRemoteDescription(offer) 成功')
         const answer = await pc.createAnswer()
@@ -410,6 +412,7 @@ export function useLocalSync() {
       } else {
         // Sender receiving the Answer from QR
         console.log('[setRemoteSDP] 设置 answer')
+        if (timeoutRef.current) { clearTimeout(timeoutRef.current); timeoutRef.current = null }
         await pc.setRemoteDescription({ type: 'answer', sdp })
         console.log('[setRemoteSDP] setRemoteDescription(answer) 成功')
         updateStatus({ status: 'connecting' })
