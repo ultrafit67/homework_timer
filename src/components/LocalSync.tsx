@@ -25,8 +25,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
   const [scanProgress, setScanProgress] = useState<{ collected: number; total: number } | null>(null)
   /** Which QR code is currently displayed (sequential display) */
   const [currentQrStep, setCurrentQrStep] = useState(0)
-  /** Debug: raw scanned data first bytes */
-  const [debugScanned, setDebugScanned] = useState<string | null>(null)
   /** Debug: reconstructed SDP preview */
   const [debugReconstructedSdp, setDebugReconstructedSdp] = useState<string | null>(null)
   const [showDiag, setShowDiag] = useState(false)
@@ -138,7 +136,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
 
   const handleScanResult = useCallback(async (data: string) => {
     const raw = data.trim()
-    setDebugScanned(raw.length > 60 ? raw.slice(0, 60) + '...' : raw)
     if (isChunkedPayload(raw)) {
       const header = parseChunkHeader(raw)
       if (!header) { setCameraError('二维码内容无效'); return }
@@ -220,7 +217,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
   const clearScanBuffer = () => {
     chunkBufferRef.current = []
     setScanProgress(null)
-    setDebugScanned(null)
     setDebugReconstructedSdp(null)
     setShowDiag(false)
   }
@@ -324,12 +320,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
               返回
             </button>
             {cameraError && <p className="localsync__camera-error">{cameraError}</p>}
-            {debugScanned && cameraError && (
-              <p className="localsync__debug">扫码内容: <code>{debugScanned}</code></p>
-            )}
-            {!cameraError && debugScanned && (
-              <p className="localsync__debug"><code>{debugScanned}</code></p>
-            )}
           </div>
         )}
 
@@ -372,12 +362,6 @@ export function LocalSync({ open, onClose }: LocalSyncProps) {
               <canvas ref={canvasRef} style={{ display: 'none' }} />
             </div>
             {cameraError && <p className="localsync__camera-error">{cameraError}</p>}
-            {debugScanned && cameraError && (
-              <p className="localsync__debug">扫码内容: <code>{debugScanned}</code></p>
-            )}
-            {!cameraError && debugScanned && (
-              <p className="localsync__debug"><code>{debugScanned}</code></p>
-            )}
           </div>
         )}
 
