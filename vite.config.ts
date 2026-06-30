@@ -4,9 +4,11 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'child_process'
 
-function getGitHash(): string {
+function getVersion(): string {
   try {
-    return execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+    const hash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+    const date = execSync('git log -1 --format=%cd --date=format:%Y-%m-%d', { encoding: 'utf-8' }).trim()
+    return `${date}-${hash}`
   } catch {
     return 'unknown'
   }
@@ -15,7 +17,7 @@ function getGitHash(): string {
 export default defineConfig({
   base: '/homework_timer/',
   define: {
-    __APP_VERSION__: JSON.stringify(getGitHash())
+    __APP_VERSION__: JSON.stringify(getVersion())
   },
   server: {
     host: '0.0.0.0'
@@ -27,7 +29,7 @@ export default defineConfig({
         server.middlewares.use('/__version', (_req, res) => {
           res.setHeader('Content-Type', 'text/plain')
           res.setHeader('Cache-Control', 'no-cache')
-          res.end(getGitHash())
+          res.end(getVersion())
         })
       }
     } satisfies Plugin,
