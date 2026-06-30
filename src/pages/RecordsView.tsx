@@ -453,7 +453,7 @@ export function RecordsView() {
               <p style={{marginBottom:'12px'}}>所有数据（作业记录、设置等）仅存储在您设备的本地数据库（IndexedDB）中，<strong>不会上传到任何服务器</strong>。</p>
               <p style={{marginBottom:'12px'}}>备份文件导出后保存在您指定的本地目录或下载到您的设备，不会被应用自动上传。</p>
               <p style={{marginBottom:'12px'}}><strong>AI 分析</strong>功能需要您自行配置 API Key，分析请求直接发送至 DeepSeek API。传输内容仅包含科目的学习时长统计，不包含您的姓名、年级等个人信息。</p>
-              <p>我们不会以任何方式收集、存储或分享您的个人数据。</p>
+              <p>本应用不会以任何方式收集、存储或分享您的个人数据。</p>
             </div>
             <div className="dialog__actions">
               <button className="btn btn--primary" onClick={() => setShowPrivacy(false)}>知道了</button>
