@@ -295,6 +295,12 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <h3 className="dialog__title">使用方法</h3>
             <div className="dialog__body usage-guide">
               <section>
+                <h4>安装到桌面（PWA）</h4>
+                <p><strong>iOS（Safari）</strong>：点击底部分享按钮 →「添加到主屏幕」→ 右上角「添加」。</p>
+                <p><strong>Android（Chrome）</strong>：点击右上角菜单 →「添加到主屏幕」→ 按提示添加。</p>
+                <p>安装后可离线使用，像原生 App 一样从桌面直接打开。</p>
+              </section>
+              <section>
                 <h4>修改姓名/年级</h4>
                 <p>点击计时面板顶部的姓名，在弹出的对话框中修改姓名和年级。修改姓名会自动更新历史记录中该姓名的所有记录。</p>
               </section>
