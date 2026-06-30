@@ -51,6 +51,43 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [error, setError] = useState<string | null>(null)
   const hasApiKey = useMemo(() => !!loadApiKey(), [showApiKey])
   const [version, setVersion] = useState(__APP_VERSION__)
+  const [installPrompt, setInstallPrompt] = useState<Event | null>(null)
+  const [appInstalled, setAppInstalled] = useState(false)
+  const isStandalone = useMemo(() =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true
+  , [])
+
+  useEffect(() => {
+    const onBeforeInstall = (e: Event) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    const onInstalled = () => setAppInstalled(true)
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  const [installResult, setInstallResult] = useState<string | null>(null)
+  const handleInstall = async () => {
+    if (installPrompt) {
+      setInstallResult(null)
+      ;(installPrompt as any).prompt()
+      const { outcome } = await (installPrompt as any).userChoice
+      if (outcome === 'accepted') {
+        setInstallPrompt(null)
+        setInstallResult('安装成功！请在桌面查看')
+        setTimeout(() => setInstallResult(null), 5000)
+      }
+    } else {
+      setShowUsage(true)
+    }
+  }
+
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const fetchVersion = () => {
@@ -185,6 +222,14 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
               <span className="usage-link" onClick={() => { setFeedbackText(''); setShowFeedback(true) }}>问题反馈</span>
             </div>
           </div>
+          {!isStandalone && !appInstalled && (
+            <button className="btn btn--primary timer-page__install-btn" onClick={handleInstall}>
+              安装到桌面
+            </button>
+          )}
+          {installResult && (
+            <div className="timer-page__install-result">{installResult}</div>
+          )}
           <div className="timer-page__version">{version}</div>
           <KudosButton />
         </>

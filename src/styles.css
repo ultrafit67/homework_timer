@@ -171,6 +171,22 @@ body {
   user-select: none;
 }
 
+.timer-page__install-btn {
+  display: block;
+  margin: 16px auto 0;
+  font-size: 15px;
+  padding: 10px 24px;
+  border-radius: 8px;
+}
+
+.timer-page__install-result {
+  text-align: center;
+  font-size: 14px;
+  color: var(--color-primary, #4F46E5);
+  margin-top: 12px;
+  font-weight: 500;
+}
+
 .timer-page {
   padding-bottom: 80px;
 }
