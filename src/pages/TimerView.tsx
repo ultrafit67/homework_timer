@@ -8,6 +8,7 @@ import { ApiKeyDialog } from '../components/ApiKeyDialog'
 import { addRecord } from '../db'
 import { generateId, loadGrade, loadUserNames, formatDuration, formatDate } from '../utils'
 import { loadApiKey } from '../hooks/useAI'
+import { BadgeWall } from '../components/BadgeWall'
 
 interface TimerViewProps {
   onRecordAdded: (record?: HomeworkRecord) => void
@@ -36,6 +37,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
   const [showManual, setShowManual] = useState(false)
   const [showUsage, setShowUsage] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
+  const [showBadgeWall, setShowBadgeWall] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [feedbackSending, setFeedbackSending] = useState(false)
@@ -214,6 +216,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
             <span className="manual-link" onClick={handleOpenManual}>
               手动记录
             </span>
+            <span className="manual-link" onClick={() => setShowBadgeWall(true)}>徽章墙</span>
             <span className={`ai-settings-link${hasApiKey ? ' ai-settings-link--set' : ''}`} onClick={() => setShowApiKey(true)}>
               AI设置
             </span>
@@ -333,6 +336,7 @@ export function TimerView({ onRecordAdded }: TimerViewProps) {
       )}
 
       <ApiKeyDialog open={showApiKey} onClose={() => setShowApiKey(false)} />
+      {showBadgeWall && <BadgeWall users={users} onClose={() => setShowBadgeWall(false)} />}
 
       {showUsage && (
         <div className="dialog-overlay" onClick={() => setShowUsage(false)}>

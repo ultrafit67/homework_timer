@@ -6,10 +6,11 @@ A PWA homework timer for 2 users (老大, 老二): 3 tab views (Timer, Stats, Re
 
 ```
 src/
-  types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade, SUBJECT_COLORS, SUBJECT_ICONS
-  utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats,
-                     loadGrade, saveGrade, loadUserNames, saveUserName, auto-backup
-  db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
+   badges.ts        — Badge definitions (streak/time), BadgeEntry, computeBadges()
+   types.ts         — Subject, HomeworkRecord, USERS, Grade, getSubjectsForGrade, SUBJECT_COLORS, SUBJECT_ICONS
+   utils.ts         — generateId, formatTime, formatDuration, getWeekId, computeStats,
+                      loadGrade, saveGrade, loadUserNames, saveUserName, auto-backup
+   db.ts            — IndexedDB via `idb` v8 (singleton, lazy migration, v3)
    hooks/
      useTimer.ts    — Timer state machine (idle → subjectSelected → timing → paused)
      useRecords.ts  — CRUD + computed stats + user/subject filter
@@ -22,6 +23,7 @@ src/
      LocalSync.tsx  — LAN sync UI: QR scanner/generator, camera, self-test, sync status
      ApiKeyDialog.tsx — DeepSeek API Key config dialog (on timer page)
      AIAnalysis.tsx  — AI analysis section (on records page): trigger, result render, history list
+     BadgeWall.tsx   — Badge wall dialog: per-user streak/time badges, unlocked/locked states, unlock date detail
    pages/           — TimerView, StatsView, RecordsView (tab content)
    App.tsx          — BrowserRouter + Routes + BottomNav + sync status indicator
    styles.css       — Single CSS file, mobile-first (max-width 480px), BEM naming
@@ -76,6 +78,7 @@ src/
 - **User config reset**: config dialog has "重置默认值" button to reset name/grade to defaults
 - **Clear all records**: "清除所有记录" button on Records page with confirmation dialog, permanently removes all records from IndexedDB
 - **Feedback**: "问题反馈" button on timer page opens dialog; submits via Formspree POST (no backend required)
+- **Badge wall**: "徽章墙" button on timer page opens dialog; per-user streak (三天/7天/30天/100天) and cumulative time (10h/50h/100h/200h/1000h) badges; unlocked badges show colored icon + name + unlock date, locked badges show gray silhouette + "???" + vague clue; unlock time frozen to localStorage on first achievement
 
 ## Timer state machine (`useTimer.ts`)
 
@@ -183,7 +186,7 @@ src/
 ## GitHub
 
 - add ssh keys in https://github.com/settings/keys
-- git remote set-url origin git@github.com:ultrafit67/homework_app.git
+- git remote set-url origin git@github.com:ultrafit67/homework_timer.git
 - git pull origin main
 - git push -u origin main
 
